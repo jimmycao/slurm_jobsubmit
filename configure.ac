@@ -249,7 +249,8 @@ if test ${glib_config_minor_version=0} -ge 32 ; then
        AC_DEFINE([GLIB_NEW_THREADS], 1, [Define to 1 if using glib-2.32.0 or higher])
 fi
 
-AM_PATH_GTK_2_0([2.7.1], [ac_gtk_test="yes"], [ac_gtk_test="no"], [gthread])
+# AM_PATH_GTK_2_0([2.7.1], [ac_gtk_test="yes"], [ac_gtk_test="no"], [gthread])
+AM_PATH_GTK_2_0([2.18.9], [ac_gtk_test="yes"], [ac_gtk_test="no"], [gthread])
 if test ${gtk_config_minor_version=0} -ge 10 ; then
        AC_DEFINE([GTK2_USE_RADIO_SET], 1, [Define to 1 if using gtk+-2.10.0 or higher])
 fi
@@ -531,6 +532,7 @@ AC_CONFIG_FILES([Makefile
 		 src/plugins/sched/hold/Makefile
 		 src/plugins/sched/wiki/Makefile
 		 src/plugins/sched/wiki2/Makefile
+		 src/plugins/sched/dynalloc/Makefile
 		 src/plugins/select/Makefile
 		 src/plugins/select/bluegene/Makefile
 		 src/plugins/select/bluegene/ba/Makefile
