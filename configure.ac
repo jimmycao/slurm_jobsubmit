@@ -540,7 +540,6 @@ AC_CONFIG_FILES([Makefile
 		 src/plugins/sched/hold/Makefile
 		 src/plugins/sched/wiki/Makefile
 		 src/plugins/sched/wiki2/Makefile
-		 src/plugins/sched/dynalloc/Makefile
 		 src/plugins/select/Makefile
 		 src/plugins/select/bluegene/Makefile
 		 src/plugins/select/bluegene/ba/Makefile
