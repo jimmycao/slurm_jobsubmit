@@ -230,6 +230,13 @@ AM_CONDITIONAL(HAVE_SOME_CURSES, test "x$ac_have_some_curses" = "xyes")
 AC_SUBST(HAVE_SOME_CURSES)
 
 #
+#  Tests for Check
+#
+
+PKG_CHECK_MODULES([CHECK], [check >= 0.9.8], [ac_have_check="yes"], [ac_have_check="no"])
+AM_CONDITIONAL(HAVE_CHECK, test "x$ac_have_check" = "xyes")
+
+#
 #  Tests for GTK+
 #
 
@@ -503,6 +510,7 @@ AC_CONFIG_FILES([Makefile
 		 src/plugins/job_submit/Makefile
 		 src/plugins/job_submit/cnode/Makefile
 		 src/plugins/job_submit/defaults/Makefile
+		 src/plugins/job_submit/dynalloc/Makefile
 		 src/plugins/job_submit/logging/Makefile
 		 src/plugins/job_submit/lua/Makefile
 		 src/plugins/job_submit/partition/Makefile

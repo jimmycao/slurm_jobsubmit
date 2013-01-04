@@ -353,6 +353,8 @@ typedef struct slurmctld_resv {
 	char *partition;	/* name of partition to be used		*/
 	struct part_record *part_ptr;	/* pointer to partition used	*/
 	uint32_t resv_id;	/* unique reservation ID, internal use	*/
+	bool run_epilog;	/* set if epilog has been executed	*/
+	bool run_prolog;	/* set if prolog has been executed	*/
 	time_t start_time;	/* start time of reservation		*/
 	time_t start_time_first;/* when the reservation first started	*/
 	time_t start_time_prev;	/* If start time was changed this is
@@ -668,6 +670,7 @@ struct 	step_record {
 	time_t start_time;      	/* step allocation start time */
 	uint32_t time_limit;      	/* step allocation time limit */
 	dynamic_plugin_data_t *select_jobinfo;/* opaque data, BlueGene */
+	uint16_t state;			/* state of the step. See job_states */
 	uint32_t step_id;		/* step number */
 	slurm_step_layout_t *step_layout;/* info about how tasks are laid out
 					  * in the step */
@@ -1409,6 +1412,7 @@ extern void node_no_resp_msg(void);
  * OUT buffer_size - set to size of the buffer in bytes
  * IN show_flags - job filtering options
  * IN uid - uid of user making request (for partition filtering)
+ * IN filter_uid - pack only jobs belonging to this user if not NO_VAL
  * IN protocol_version - slurm protocol version of client
  * global: job_list - global list of job records
  * NOTE: the buffer at *buffer_ptr must be xfreed by the caller
@@ -1416,7 +1420,7 @@ extern void node_no_resp_msg(void);
  *	whenever the data format changes
  */
 extern void pack_all_jobs(char **buffer_ptr, int *buffer_size,
-			  uint16_t show_flags, uid_t uid,
+			  uint16_t show_flags, uid_t uid, uint32_t filter_uid,
 			  uint16_t protocol_version);
 
 /*
@@ -1513,6 +1517,25 @@ extern void pack_part (struct part_record *part_ptr, Buf buffer,
 extern int pack_one_job(char **buffer_ptr, int *buffer_size,
 			uint32_t job_id, uint16_t show_flags, uid_t uid,
 			uint16_t protocol_version);
+
+/*
+ * pack_one_node - dump all configuration and node information for one node
+ *	in machine independent form (for network transmission)
+ * OUT buffer_ptr - pointer to the stored data
+ * OUT buffer_size - set to size of the buffer in bytes
+ * IN show_flags - node filtering options
+ * IN uid - uid of user making request (for partition filtering)
+ * IN node_name - name of node for which information is desired,
+ *		  use first node if name is NULL
+ * IN protocol_version - slurm protocol version of client
+ * global: node_record_table_ptr - pointer to global node table
+ * NOTE: the caller must xfree the buffer at *buffer_ptr
+ * NOTE: change slurm_load_node() in api/node_info.c when data format changes
+ * NOTE: READ lock_slurmctld config before entry
+ */
+extern void pack_one_node (char **buffer_ptr, int *buffer_size,
+			   uint16_t show_flags, uid_t uid, char *node_name,
+			   uint16_t protocol_version);
 
 /* part_filter_clear - Clear the partition's hidden flag based upon a user's
  * group access. This must follow a call to part_filter_set() */

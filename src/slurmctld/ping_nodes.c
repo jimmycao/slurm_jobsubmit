@@ -49,6 +49,7 @@
 #include <string.h>
 
 #include "src/common/hostlist.h"
+#include "src/common/node_select.h"
 #include "src/common/read_config.h"
 #include "src/slurmctld/agent.h"
 #include "src/slurmctld/front_end.h"
@@ -262,7 +263,12 @@ void ping_nodes (void)
 			continue;
 		}
 
-		if (restart_flag)
+		/* If we are resuming nodes from power save we need to
+		   keep the larger last_response so we don't
+		   accidentally mark them as "unexpectedly rebooted".
+		*/
+		if (restart_flag
+		    && (node_ptr->last_response < slurmctld_conf.last_update))
 			node_ptr->last_response = slurmctld_conf.last_update;
 
 		/* Request a node registration if its state is UNKNOWN or
@@ -337,6 +343,7 @@ extern void run_health_check(void)
 	front_end_record_t *front_end_ptr;
 #else
 	struct node_record *node_ptr;
+	int node_states = slurmctld_conf.health_check_node_state;
 #endif
 	int i;
 	char *host_str = NULL;
@@ -358,11 +365,43 @@ extern void run_health_check(void)
 		check_agent_args->node_count++;
 	}
 #else
+	if ((node_states != HEALTH_CHECK_NODE_ANY) &&
+	    (node_states != HEALTH_CHECK_NODE_IDLE)) {
+		/* Update each node's alloc_cpus count */
+		select_g_select_nodeinfo_set_all();
+	}
+
 	for (i=0, node_ptr=node_record_table_ptr;
 	     i<node_record_count; i++, node_ptr++) {
 		if (IS_NODE_NO_RESPOND(node_ptr) || IS_NODE_FUTURE(node_ptr) ||
 		    IS_NODE_POWER_SAVE(node_ptr))
 			continue;
+		if (node_states != HEALTH_CHECK_NODE_ANY) {
+			uint16_t cpus_total, cpus_used = 0;
+			if (slurmctld_conf.fast_schedule) {
+				cpus_total = node_ptr->config_ptr->cpus;
+			} else {
+				cpus_total = node_ptr->cpus;
+			}
+			if (!IS_NODE_IDLE(node_ptr)) {
+				select_g_select_nodeinfo_get(
+						node_ptr->select_nodeinfo,
+						SELECT_NODEDATA_SUBCNT,
+						NODE_STATE_ALLOCATED,
+						&cpus_used);
+			}
+			if (cpus_used == 0) {
+				if (!(node_states & HEALTH_CHECK_NODE_IDLE))
+					continue;
+			} else if (cpus_used < cpus_total) {
+				if (!(node_states & HEALTH_CHECK_NODE_MIXED))
+					continue;
+			} else {
+				if (!(node_states & HEALTH_CHECK_NODE_ALLOC))
+					continue;
+			}
+		}
+
 		hostlist_push(check_agent_args->hostlist, node_ptr->name);
 		check_agent_args->node_count++;
 	}

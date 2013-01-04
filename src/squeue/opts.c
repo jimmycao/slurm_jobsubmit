@@ -317,8 +317,6 @@ parse_command_line( int argc, char* argv[] )
 		char *name1 = NULL;
 		char *name2 = NULL;
 		hostset_t nodenames = hostset_create(NULL);
-		if (nodenames == NULL)
-			fatal("malloc failure");
 
 		while ( hostset_count(params.nodes) > 0 ) {
 			name1 = hostset_pop(params.nodes);
@@ -394,20 +392,48 @@ parse_command_line( int argc, char* argv[] )
 		}
 	}
 
-	params.max_cpus = _max_cpus_per_node();
+	if (params.job_list && (list_count(params.job_list) == 1)) {
+		ListIterator iterator;
+		uint32_t *job_id_ptr;
+		iterator = list_iterator_create(params.job_list);
+		job_id_ptr = list_next(iterator);
+		params.job_id = *job_id_ptr;
+		list_iterator_destroy(iterator);
+	}
+	if (params.user_list && (list_count(params.user_list) == 1)) {
+		ListIterator iterator;
+		uint32_t *uid_ptr;
+		iterator = list_iterator_create(params.user_list);
+		while ((uid_ptr = list_next(iterator))) {
+			params.user_id = *uid_ptr;
+			break;
+		}
+		list_iterator_destroy(iterator);
+	}
+	if (params.job_id || params.user_id)
+		params.max_cpus = 1;	/* To minimize overhead */
+	else
+		params.max_cpus = _max_cpus_per_node();
 
 	if ( params.verbose )
 		_print_options();
 }
 
-/* Return the maximum number of processors for any node in the cluster */
+/* Return the maximum number of processors for any node in the cluster. */
 static int   _max_cpus_per_node(void)
 {
 	int error_code, max_cpus = 1;
 	node_info_msg_t *node_info_ptr = NULL;
 
+	/* Since slurm_load_node() is a high-overhead function call, use
+	 * slurm_load_node_single() instead and assume a homogeneous cluster */
+#if 0
 	error_code = slurm_load_node ((time_t) NULL, &node_info_ptr,
 				      params.all_flag);
+#else
+	error_code = slurm_load_node_single(&node_info_ptr, NULL,
+					    params.all_flag);
+#endif
 	if (error_code == SLURM_SUCCESS) {
 		int i;
 		node_info_t *node_ptr = node_info_ptr->node_array;

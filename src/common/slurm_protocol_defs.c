@@ -311,6 +311,11 @@ extern void slurm_free_job_id_msg(job_id_msg_t * msg)
 	xfree(msg);
 }
 
+extern void slurm_free_job_user_id_msg(job_user_id_msg_t * msg)
+{
+	xfree(msg);
+}
+
 extern void slurm_free_job_step_id_msg(job_step_id_msg_t * msg)
 {
 	xfree(msg);
@@ -355,6 +360,14 @@ extern void slurm_free_front_end_info_request_msg
 extern void slurm_free_node_info_request_msg(node_info_request_msg_t *msg)
 {
 	xfree(msg);
+}
+
+extern void slurm_free_node_info_single_msg(node_info_single_msg_t *msg)
+{
+	if (msg) {
+		xfree(msg->node_name);
+		xfree(msg);
+	}
 }
 
 extern void slurm_free_part_info_request_msg(part_info_request_msg_t *msg)
@@ -1300,6 +1313,34 @@ extern char *trigger_res_type(uint16_t res_type)
 		return "front_end";
 	else
 		return "unknown";
+}
+
+/* Convert HealthCheckNodeState numeric value to a string.
+ * Caller must xfree() the return value */
+extern char *health_check_node_state_str(uint16_t node_state)
+{
+	char *state_str = NULL;
+
+	if (node_state == HEALTH_CHECK_NODE_ANY) {
+		state_str = xstrdup("ANY");
+		return state_str;
+	}
+
+	state_str = xstrdup("");
+	if (node_state & HEALTH_CHECK_NODE_IDLE)
+		xstrcat(state_str, "IDLE");
+	if (node_state & HEALTH_CHECK_NODE_ALLOC) {
+		if (state_str[0])
+			xstrcat(state_str, ",");
+		xstrcat(state_str, "ALLOC");
+	}
+	if (node_state & HEALTH_CHECK_NODE_MIXED) {
+		if (state_str[0])
+			xstrcat(state_str, ",");
+		xstrcat(state_str, "MIXED");
+	}
+
+	return state_str;
 }
 
 extern char *trigger_type(uint32_t trig_type)
@@ -2445,6 +2486,9 @@ extern int slurm_free_msg_data(slurm_msg_type_t type, void *data)
 	case REQUEST_NODE_INFO:
 		slurm_free_node_info_request_msg(data);
 		break;
+	case REQUEST_NODE_INFO_SINGLE:
+		slurm_free_node_info_single_msg(data);
+		break;
 	case REQUEST_PARTITION_INFO:
 		slurm_free_part_info_request_msg(data);
 		break;
@@ -2539,6 +2583,9 @@ extern int slurm_free_msg_data(slurm_msg_type_t type, void *data)
 	case REQUEST_JOB_REQUEUE:
 	case REQUEST_JOB_INFO_SINGLE:
 		slurm_free_job_id_msg(data);
+		break;
+	case REQUEST_JOB_USER_INFO:
+		slurm_free_job_user_id_msg(data);
 		break;
 	case REQUEST_SHARE_INFO:
 		slurm_free_shares_request_msg(data);

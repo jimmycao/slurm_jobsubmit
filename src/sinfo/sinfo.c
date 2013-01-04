@@ -276,14 +276,23 @@ _query_server(partition_info_msg_t ** part_pptr,
 	if (old_node_ptr) {
 		if (clear_old)
 			old_node_ptr->last_update = 0;
-		error_code = slurm_load_node(old_node_ptr->last_update,
-					     &new_node_ptr, show_flags);
+		if (params.node_name_single) {
+			error_code = slurm_load_node_single(&new_node_ptr,
+							    params.nodes,
+							    show_flags);
+		} else {
+			error_code = slurm_load_node(old_node_ptr->last_update,
+						     &new_node_ptr, show_flags);
+		}
 		if (error_code == SLURM_SUCCESS)
 			slurm_free_node_info_msg(old_node_ptr);
 		else if (slurm_get_errno() == SLURM_NO_CHANGE_IN_DATA) {
 			error_code = SLURM_SUCCESS;
 			new_node_ptr = old_node_ptr;
 		}
+	} else if (params.node_name_single) {
+		error_code = slurm_load_node_single(&new_node_ptr, params.nodes,
+						    show_flags);
 	} else {
 		error_code = slurm_load_node((time_t) NULL, &new_node_ptr,
 					     show_flags);
@@ -392,38 +401,44 @@ static int _build_sinfo_data(List sinfo_list,
 			continue;
 
 		j2 = 0;
-		while(part_ptr->node_inx[j2] >= 0) {
+		while (part_ptr->node_inx[j2] >= 0) {
 			int i2 = 0;
 			uint16_t subgrp_size = 0;
-			for(i2 = part_ptr->node_inx[j2];
-			    i2 <= part_ptr->node_inx[j2+1];
-			    i2++) {
+			for (i2 = part_ptr->node_inx[j2];
+			     i2 <= part_ptr->node_inx[j2+1];
+			     i2++) {
+				if (i2 >= node_msg->record_count) {
+					/* This can happen if info for single
+					 * node name is loaded */
+					break;
+				}
 				node_ptr = &(node_msg->node_array[i2]);
 
-				if (node_ptr->name == NULL ||
+				if ((node_ptr->name == NULL) ||
 				    (params.filtering &&
 				     _filter_out(node_ptr)))
 					continue;
 
-				if(select_g_select_nodeinfo_get(
+				if (select_g_select_nodeinfo_get(
 					   node_ptr->select_nodeinfo,
 					   SELECT_NODEDATA_SUBGRP_SIZE,
 					   0,
 					   &subgrp_size) == SLURM_SUCCESS
-				   && subgrp_size)
+				    && subgrp_size) {
 					_handle_subgrps(sinfo_list,
 							(uint16_t) j,
 							part_ptr,
 							node_ptr,
 							node_msg->
 							node_scaling);
-				else
+				} else {
 					_insert_node_ptr(sinfo_list,
 							 (uint16_t) j,
 							 part_ptr,
 							 node_ptr,
 							 node_msg->
 							 node_scaling);
+				}
 			}
 			j2 += 2;
 		}

@@ -544,13 +544,6 @@ line6:
 				job_resrcs->cores_per_socket[sock_inx];
 
 			core_bitmap = bit_alloc(bit_reps);
-			if (core_bitmap == NULL) {
-				error("bit_alloc malloc failure");
-				hostlist_destroy(hl_last);
-				hostlist_destroy(hl);
-				return NULL;
-			}
-
 			for (j=0; j < bit_reps; j++) {
 				if (bit_test(job_resrcs->core_bitmap, bit_inx))
 					bit_set(core_bitmap, j);
@@ -854,7 +847,7 @@ slurm_load_jobs (time_t update_time, job_info_msg_t **resp,
 	slurm_msg_t_init(&resp_msg);
 
 	req.last_update  = update_time;
-	req.show_flags = show_flags;
+	req.show_flags   = show_flags;
 	req_msg.msg_type = REQUEST_JOB_INFO;
 	req_msg.data     = &req;
 
@@ -876,7 +869,53 @@ slurm_load_jobs (time_t update_time, job_info_msg_t **resp,
 		break;
 	}
 
-	return SLURM_PROTOCOL_SUCCESS ;
+	return SLURM_PROTOCOL_SUCCESS;
+}
+
+/*
+ * slurm_load_job_user - issue RPC to get slurm information about all jobs
+ *	to be run as the specified user
+ * IN job_info_msg_pptr - place to store a job configuration pointer
+ * IN user_id - ID of user we want information for
+ * IN show_flags - job filtering options
+ * RET 0 or -1 on error
+ * NOTE: free the response using slurm_free_job_info_msg
+ */
+extern int slurm_load_job_user (job_info_msg_t **resp, uint32_t user_id,
+				uint16_t show_flags)
+{
+	int rc;
+	slurm_msg_t resp_msg;
+	slurm_msg_t req_msg;
+	job_user_id_msg_t req;
+
+	slurm_msg_t_init(&req_msg);
+	slurm_msg_t_init(&resp_msg);
+
+	req.show_flags   = show_flags;
+	req.user_id      = user_id;
+	req_msg.msg_type = REQUEST_JOB_USER_INFO;
+	req_msg.data     = &req;
+
+	if (slurm_send_recv_controller_msg(&req_msg, &resp_msg) < 0)
+		return SLURM_ERROR;
+
+	switch (resp_msg.msg_type) {
+	case RESPONSE_JOB_INFO:
+		*resp = (job_info_msg_t *)resp_msg.data;
+		break;
+	case RESPONSE_SLURM_RC:
+		rc = ((return_code_msg_t *) resp_msg.data)->return_code;
+		slurm_free_return_code_msg(resp_msg.data);
+		if (rc)
+			slurm_seterrno_ret(rc);
+		break;
+	default:
+		slurm_seterrno_ret(SLURM_UNEXPECTED_MSG_ERROR);
+		break;
+	}
+
+	return SLURM_PROTOCOL_SUCCESS;
 }
 
 /*

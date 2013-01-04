@@ -6,6 +6,7 @@
  *  Portions Copyright (C) 2008 Vijay Ramasubramanian.
  *  Portions Copyright (C) 2010 SchedMD <http://www.schedmd.com>.
  *  Portions (boards) copyright (C) 2012 Bull, <rod.schultz@bull.com>
+ *  Copyright (C) 2012-2013 Los Alamos National Security, LLC.
  *  Produced at Lawrence Livermore National Laboratory (cf, DISCLAIMER).
  *  Written by Morris Jette <jette1@llnl.gov>.
  *  CODE-OCEC-09-009. All rights reserved.
@@ -193,6 +194,7 @@ s_p_options_t slurm_conf_options[] = {
 	{"GroupUpdateForce", S_P_UINT16},
 	{"GroupUpdateTime", S_P_UINT16},
 	{"HealthCheckInterval", S_P_UINT16},
+	{"HealthCheckNodeState", S_P_STRING},
 	{"HealthCheckProgram", S_P_STRING},
 	{"InactiveLimit", S_P_UINT16},
 	{"JobAcctGatherType", S_P_STRING},
@@ -209,6 +211,7 @@ s_p_options_t slurm_conf_options[] = {
 	{"JobFileAppend", S_P_UINT16},
 	{"JobRequeue", S_P_UINT16},
 	{"JobSubmitPlugins", S_P_STRING},
+	{"JobSubmitDynAllocPort", S_P_UINT16},
 	{"KillOnBadExit", S_P_UINT16},
 	{"KillWait", S_P_UINT16},
 	{"LaunchType", S_P_STRING},
@@ -253,7 +256,9 @@ s_p_options_t slurm_conf_options[] = {
 	{"ResumeProgram", S_P_STRING},
 	{"ResumeRate", S_P_UINT16},
 	{"ResumeTimeout", S_P_UINT16},
+	{"ResvEpilog", S_P_STRING},
 	{"ResvOverRun", S_P_UINT16},
+	{"ResvProlog", S_P_STRING},
 	{"ReturnToService", S_P_UINT16},
 	{"SallocDefaultCommand", S_P_STRING},
 	{"SchedulerAuth", S_P_STRING, _defunct_option},
@@ -2035,6 +2040,8 @@ free_slurm_conf (slurm_ctl_conf_t *ctl_conf_ptr, bool purge_node_hash)
 	xfree (ctl_conf_ptr->propagate_rlimits_except);
 	xfree (ctl_conf_ptr->reboot_program);
 	xfree (ctl_conf_ptr->resume_program);
+	xfree (ctl_conf_ptr->resv_epilog);
+	xfree (ctl_conf_ptr->resv_prolog);
 	xfree (ctl_conf_ptr->salloc_default_command);
 	xfree (ctl_conf_ptr->sched_logfile);
 	xfree (ctl_conf_ptr->sched_params);
@@ -2158,7 +2165,9 @@ init_slurm_conf (slurm_ctl_conf_t *ctl_conf_ptr)
 	ctl_conf_ptr->resume_timeout		= 0;
 	xfree (ctl_conf_ptr->resume_program);
 	ctl_conf_ptr->resume_rate		= (uint16_t) NO_VAL;
+	xfree (ctl_conf_ptr->resv_epilog);
 	ctl_conf_ptr->resv_over_run		= 0;
+	xfree (ctl_conf_ptr->resv_prolog);
 	ctl_conf_ptr->ret2service		= (uint16_t) NO_VAL;
 	xfree( ctl_conf_ptr->salloc_default_command);
 	xfree( ctl_conf_ptr->sched_params );
@@ -2208,6 +2217,7 @@ init_slurm_conf (slurm_ctl_conf_t *ctl_conf_ptr)
 	ctl_conf_ptr->use_pam			= 0;
 	ctl_conf_ptr->vsize_factor              = 0;
 	ctl_conf_ptr->wait_time			= (uint16_t) NO_VAL;
+	ctl_conf_ptr->js_dynallocport		= (uint16_t) NO_VAL;
 	ctl_conf_ptr->kill_on_bad_exit	= 0;
 
 	_free_name_hashtbl();
@@ -2470,6 +2480,34 @@ static void _normalize_debug_level(uint16_t *level)
 		*level = (LOG_LEVEL_END - 1);
 	}
 	/* level is uint16, always > LOG_LEVEL_QUIET(0), can't underflow */
+}
+
+/* Convert HealthCheckNodeState string to numeric value */
+static uint16_t _health_node_state(char *state_str)
+{
+	uint16_t state_num = 0;
+	char *tmp_str = xstrdup(state_str);
+	char *token, *last = NULL;
+
+	token = strtok_r(tmp_str, ",", &last);
+	while (token) {
+		if (!strcasecmp(token, "ANY"))
+			state_num |= HEALTH_CHECK_NODE_ANY;
+		else if (!strcasecmp(token, "ALLOC"))
+			state_num |= HEALTH_CHECK_NODE_ALLOC;
+		else if (!strcasecmp(token, "IDLE"))
+			state_num |= HEALTH_CHECK_NODE_IDLE;
+		else if (!strcasecmp(token, "MIXED"))
+			state_num |= HEALTH_CHECK_NODE_MIXED;
+		else {
+			error("Invalid HealthCheckNodeState value %s ignored",
+			      token);
+		}
+		token = strtok_r(NULL, ",", &last);
+	}
+	xfree(tmp_str);
+
+	return state_num;
 }
 
 /*
@@ -2756,8 +2794,22 @@ _validate_and_set_defaults(slurm_ctl_conf_t *conf, s_p_hashtbl_t *hashtbl)
 
 	s_p_get_uint16(&conf->health_check_interval, "HealthCheckInterval",
 		       hashtbl);
+	if (s_p_get_string(&temp_str, "HealthCheckNodeState", hashtbl)) {
+		conf->health_check_node_state = _health_node_state(temp_str);
+		xfree(temp_str);
+	} else
+		conf->health_check_node_state = HEALTH_CHECK_NODE_ANY;
+
 	s_p_get_string(&conf->health_check_program, "HealthCheckProgram",
 		       hashtbl);
+
+	if (s_p_get_uint16(&conf->js_dynallocport, "JobSubmitDynAllocPort", hashtbl)) {
+		if (conf->js_dynallocport == 0) {
+			error("JobSubmitDynAllocPort=0 is invalid");
+		}
+	} else {
+		conf->js_dynallocport = 0;
+	}
 
 	if (!s_p_get_uint16(&conf->kill_on_bad_exit, "KillOnBadExit", hashtbl))
 		conf->kill_on_bad_exit = DEFAULT_KILL_ON_BAD_EXIT;
@@ -3174,7 +3226,9 @@ _validate_and_set_defaults(slurm_ctl_conf_t *conf, s_p_hashtbl_t *hashtbl)
 		fatal("ReturnToService > 1 is not supported on Cray");
 #endif
 
+	s_p_get_string(&conf->resv_epilog, "ResvEpilog", hashtbl);
 	s_p_get_uint16(&conf->resv_over_run, "ResvOverRun", hashtbl);
+	s_p_get_string(&conf->resv_prolog, "ResvProlog", hashtbl);
 
 	s_p_get_string(&conf->resume_program, "ResumeProgram", hashtbl);
 	if (!s_p_get_uint16(&conf->resume_rate, "ResumeRate", hashtbl))
@@ -3459,6 +3513,12 @@ _validate_and_set_defaults(slurm_ctl_conf_t *conf, s_p_hashtbl_t *hashtbl)
 
 	if (!s_p_get_string(&conf->topology_plugin, "TopologyPlugin", hashtbl))
 		conf->topology_plugin = xstrdup(DEFAULT_TOPOLOGY_PLUGIN);
+#ifdef HAVE_BG
+	if (strcmp(conf->proctrack_type, "topology/none")) {
+		fatal("On IBM BlueGene systems TopologyPlugin=topology/none "
+		      "is required");
+	}
+#endif
 
 	if (s_p_get_uint16(&conf->tree_width, "TreeWidth", hashtbl)) {
 		if (conf->tree_width == 0) {

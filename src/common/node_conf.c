@@ -113,8 +113,6 @@ static void _add_config_feature(char *feature, bitstr_t *node_bitmap)
 
 	/* If feature already exists in feature_list, just update the bitmap */
 	feature_iter = list_iterator_create(feature_list);
-	if (feature_iter == NULL)
-		fatal("list_iterator_create malloc failure");
 	while ((feature_ptr = (struct features_record *)
 			list_next(feature_iter))) {
 		if (strcmp(feature, feature_ptr->name))
@@ -502,8 +500,6 @@ char * bitmap2node_name_sortable (bitstr_t *bitmap, bool sort)
 
 	last  = bit_fls(bitmap);
 	hl = hostlist_create("");
-	if (hl == NULL)
-		fatal("hostlist_create: malloc error");
 	for (i = first; i <= last; i++) {
 		if (bit_test(bitmap, i) == 0)
 			continue;
@@ -601,8 +597,7 @@ extern int build_all_frontend_info (bool is_slurmd_context)
 		while ((fe_name = hostlist_shift(hl_name))) {
 			fe_addr = hostlist_shift(hl_addr);
 			fe_single = xmalloc(sizeof(slurm_conf_frontend_t));
-			if (list_append(front_end_list, fe_single) == NULL)
-				fatal("list_append: malloc failure");
+			list_append(front_end_list, fe_single);
 			fe_single->frontends = xstrdup(fe_name);
 			fe_single->addresses = xstrdup(fe_addr);
 			free(fe_name);
@@ -667,8 +662,6 @@ extern int build_all_nodeline_info (bool set_bitmap)
 	if (set_bitmap) {
 		ListIterator config_iterator;
 		config_iterator = list_iterator_create(config_list);
-		if (config_iterator == NULL)
-			fatal ("memory allocation failure");
 		while ((config_ptr = (struct config_record *)
 				list_next(config_iterator))) {
 			node_name2bitmap(config_ptr->nodes, true,
@@ -691,8 +684,6 @@ extern void  build_config_feature_list(struct config_record *config_ptr)
 	/* Clear these nodes from the feature_list record,
 	 * then restore as needed */
 	feature_iter = list_iterator_create(feature_list);
-	if (feature_iter == NULL)
-		fatal("list_iterator_create malloc failure");
 	bit_not(config_ptr->node_bitmap);
 	while ((feature_ptr = (struct features_record *)
 			list_next(feature_iter))) {
@@ -873,9 +864,6 @@ extern int init_node_conf (void)
 		config_list    = list_create (_list_delete_config);
 		feature_list   = list_create (_list_delete_feature);
 		front_end_list = list_create (destroy_frontend);
-		if ((config_list == NULL) || (feature_list == NULL) ||
-		    (front_end_list == NULL))
-			fatal("list_create malloc failure");
 	}
 
 	return SLURM_SUCCESS;
@@ -925,8 +913,6 @@ extern int node_name2bitmap (char *node_names, bool best_effort,
 	hostlist_t host_list;
 
 	my_bitmap = (bitstr_t *) bit_alloc (node_record_count);
-	if (my_bitmap == NULL)
-		fatal("bit_alloc malloc failure");
 	*bitmap = my_bitmap;
 
 	if (node_names == NULL) {

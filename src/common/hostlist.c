@@ -146,11 +146,11 @@ strong_alias(hostset_nth,		slurm_hostset_nth);
 extern void lsd_fatal_error(char *file, int line, char *mesg);
 #else /* !WITH_LSD_FATAL_ERROR_FUNC */
 #  ifndef lsd_fatal_error
-#    define lsd_fatal_error(file, line, mesg)			\
-	do {							\
-		fprintf(stderr, "ERROR: [%s:%d] %s: %s\n",	\
-			file, line, mesg, strerror(errno));	\
-	} while (0)
+	static void lsd_fatal_error(char *file, int line, char *mesg)
+	{
+		fprintf(log_fp(), "ERROR: [%s:%d] %s: %s\n",
+			file, line, mesg, strerror(errno));
+	}
 #  endif /* !lsd_fatal_error */
 #endif /* !WITH_LSD_FATAL_ERROR_FUNC */
 
@@ -162,7 +162,13 @@ extern void lsd_fatal_error(char *file, int line, char *mesg);
 extern void * lsd_nomem_error(char *file, int line, char *mesg);
 #else /* !WITH_LSD_NOMEM_ERROR_FUNC */
 #  ifndef lsd_nomem_error
-#    define lsd_nomem_error(file, line, mesg) (NULL)
+	static void * lsd_nomem_error(char *file, int line, char *mesg)
+	{
+		fprintf(log_fp(), "ERROR: [%s:%d] %s: %s\n",
+			file, line, mesg, strerror(errno));
+		abort();
+		return NULL;
+	}
 #  endif /* !lsd_nomem_error */
 #endif /* !WITH_LSD_NOMEM_ERROR_FUNC */
 
@@ -173,7 +179,6 @@ extern void * lsd_nomem_error(char *file, int line, char *mesg);
  */
 #define out_of_memory(mesg)						\
 	do {								\
-		fatal("malloc failure");				\
 		errno = ENOMEM;						\
 		return(lsd_nomem_error(__FILE__, __LINE__, mesg));	\
 	} while (0)
@@ -299,7 +304,7 @@ char *alpha_num = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
  * the maximum sized array for each dimension.  This way we can be
  * prepared for any size coming in.
  */
-static bool grid[HIGHEST_BASE*HIGHEST_BASE*HIGHEST_BASE*HIGHEST_BASE*HIGHEST_BASE];
+static bool *grid = NULL;
 
 static int grid_start[HIGHEST_DIMENSIONS];
 static int grid_end[HIGHEST_DIMENSIONS];
@@ -2555,6 +2560,8 @@ char *hostlist_deranged_string_malloc(hostlist_t hl)
 		buf_size *= 2;
 		buf = realloc(buf, buf_size);
 	}
+	if (buf == NULL)
+		out_of_memory("hostlist_deranged_string_malloc");
 	return buf;
 }
 
@@ -3076,6 +3083,8 @@ char *hostlist_ranged_string_malloc(hostlist_t hl)
 		buf_size *= 2;
 		buf = realloc(buf, buf_size);
 	}
+	if (buf == NULL)
+		out_of_memory("hostlist_ranged_string_malloc");
 	return buf;
 }
 
@@ -3107,7 +3116,7 @@ ssize_t hostlist_ranged_string_dims(hostlist_t hl, size_t n,
 	bool box = false;
 	int hostlist_base;
 	static int last_dims = -1;
-
+	static int max_dims = 1;
 	DEF_TIMERS;
 
 	if (!dims)
@@ -3118,6 +3127,7 @@ ssize_t hostlist_ranged_string_dims(hostlist_t hl, size_t n,
 	LOCK_HOSTLIST(hl);
 
 	if (dims > 1 && hl->nranges) {	/* logic for block node description */
+		static uint64_t grid_size = 1;
 		slurm_mutex_lock(&multi_dim_lock);
 
 		/* compute things that only need to be calculated once
@@ -3126,6 +3136,7 @@ ssize_t hostlist_ranged_string_dims(hostlist_t hl, size_t n,
 		 */
 		if ((last_dims != dims) || (dim_grid_size == -1)) {
 			last_dims = dims;
+
 			dim_grid_size = sizeof(int) * dims;
 
 			/* the last one is always 1 */
@@ -3134,7 +3145,25 @@ ssize_t hostlist_ranged_string_dims(hostlist_t hl, size_t n,
 				offset[i] = offset[i+1] * hostlist_base;
 		}
 
-		memset(grid, 0, sizeof(grid));
+		/* This will leave an allocation when ending but it
+		   isn't overwriting and this makes it so we don't
+		   have to allocate it over and over again we fill
+		   this isn't too bad of an alternative.  We were
+		   defining this on the stack at first (we wanted to
+		   avoid that).
+		*/
+		if (!grid || (grid && (max_dims < dims))) {
+			grid_size = 1;
+			max_dims = dims;
+			xfree(grid);
+
+			for (i=0; i<dims; i++)
+				grid_size *= HIGHEST_BASE;
+			grid_size *= sizeof(bool);
+			grid = xmalloc(grid_size);
+		} else
+			memset(grid, 0, grid_size);
+
 		memset(grid_start, hostlist_base, dim_grid_size);
 		memset(grid_end, -1, dim_grid_size);
 
@@ -3240,7 +3269,7 @@ static hostlist_iterator_t hostlist_iterator_new(void)
 {
 	hostlist_iterator_t i = (hostlist_iterator_t) malloc(sizeof(*i));
 	if (!i)
-		return NULL;
+		out_of_memory("hostlist_iterator_new");
 	i->hl = NULL;
 	i->hr = NULL;
 	i->idx = 0;
@@ -3413,7 +3442,8 @@ char *hostlist_next_range(hostlist_iterator_t i)
 		buf_size *= 2;
 		buf = realloc(buf, buf_size);
 	}
-
+	if (!buf)
+		out_of_memory("hostlist_iterator_create");
 	UNLOCK_HOSTLIST(i->hl);
 
 	return buf;
@@ -3462,6 +3492,7 @@ hostset_t hostset_create(const char *hostlist)
 error2:
 	free(new);
 error1:
+	out_of_memory("hostset_create");
 	return NULL;
 }
 
@@ -3478,6 +3509,7 @@ hostset_t hostset_copy(const hostset_t set)
 error2:
 	free(new);
 error1:
+	out_of_memory("hostset_copy");
 	return NULL;
 }
 
@@ -3592,9 +3624,6 @@ int hostset_intersects(hostset_t set, const char *hosts)
 	assert(set->hl->magic == HOSTLIST_MAGIC);
 
 	hl = hostlist_create(hosts);
-	if (!hl)    /* malloc failure */
-		return retval;
-
 	while ((hostname = hostlist_pop(hl)) != NULL) {
 		retval += hostset_find_host(set, hostname);
 		free(hostname);
