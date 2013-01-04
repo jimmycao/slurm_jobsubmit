@@ -71,12 +71,12 @@ extern void fini( void )
 
 extern int job_submit(struct job_descriptor *job_desc, uint32_t submit_uid)
 {
-	return SLURM_ERROR;
+	return SLURM_SUCCESS;
 }
 
 extern int job_modify(struct job_descriptor *job_desc,
 		      struct job_record *job_ptr, uint32_t submit_uid)
 {
-	return SLURM_ERROR;
+	return SLURM_SUCCESS;
 }
 
