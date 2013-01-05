@@ -1,5 +1,5 @@
 /*****************************************************************************\
- *  allocate.c
+ *  allocate.c  - dynamic resource allocation
  *****************************************************************************
  *  Copyright (C) 2012-2013 Los Alamos National Security, LLC.
  *  Written by Jimmy Cao <Jimmy.Cao@emc.com>, Ralph Castain <rhc@open-mpi.org>

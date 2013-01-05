@@ -204,7 +204,6 @@ static void *_msg_thread(void *no_data)
 
 		fprintf(stderr, "===============================\n");
 		msg = _recv_msg(new_fd);
-                fprintf(stderr, "MSG: %s\n", msg);
 		if (msg) {
 			_proc_msg(new_fd, msg);
 			xfree(msg);
@@ -391,14 +390,14 @@ static void _operation(char *cmd_rcv, char *buf_rt)
 	int rc;
 
 	//identify the cmd
-	if(!strcasecmp(cmd_rcv, "get total node and slot no")){
-		rc = get_total_nodes_slots_no(&nodes, &slots);
+	if(!strcasecmp(cmd_rcv, "get total nodes and slots")){
+		rc = get_total_nodes_slots(&nodes, &slots);
 		if(rc == 0)
 			sprintf(buf_rt, "total_nodes=%d total_slots=%d", nodes, slots);
 		else
 			strcpy(buf_rt, "query failure");
-	}else if(!strcasecmp(cmd_rcv, "get available node and slot no")){
-		rc = get_free_nodes_slots_no(&nodes, &slots);
+	}else if(!strcasecmp(cmd_rcv, "get available nodes and slots")){
+		rc = get_free_nodes_slots(&nodes, &slots);
 		if(rc == 0)
 			sprintf(buf_rt, "avail_nodes=%d avail_slots=%d", nodes, slots);
 		else

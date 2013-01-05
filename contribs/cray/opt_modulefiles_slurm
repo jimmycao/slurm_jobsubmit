@@ -11,8 +11,9 @@ proc ModulesHelp { } {
 
 # CONFIGURATION
 conflict	xt-pbs pbs torque
-set slurmdir	"/opt/slurm/default"
-set mungedir	"/opt/slurm/munge"
+set slurmdir	"/usr/local"
+set mungedir	"/usr/local"
+set perldir	[exec perl -e "use Config; \$T=\$Config{installsitearch}; \$P=\$Config{installprefix}; \$P1=\"\$P/local\"; \$T =~ s/\$P1//; \$T =~ s/\$P//; print \$T;"]
 
 set version "UNKNOWN"
 if {![catch {exec $slurmdir/bin/sbatch --version} out]} {
@@ -29,7 +30,7 @@ prepend-path	PATH		"$mungedir/bin"
 prepend-path	MANPATH		"$slurmdir/share/man"
 prepend-path	MANPATH		"$mungedir/share/man"
 
-prepend-path	PERL5LIB	"$slurmdir/lib/perl5/site_perl"
+prepend-path	PERL5LIB	"$slurmdir/$perldir"
 
 # other useful environment variables
 setenv	SINFO_FORMAT	{%9P %5a %8s %.10l %.6c %.6z %.7D %10T %N}

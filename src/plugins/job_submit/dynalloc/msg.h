@@ -1,10 +1,9 @@
 /*****************************************************************************\
  *  msg.h - Message/communcation manager for dynalloc (resource dynamic allocation) plugin
  *****************************************************************************
- *  Copyright (C) 2006-2007 The Regents of the University of California.
- *  Produced at Lawrence Livermore National Laboratory (cf, DISCLAIMER).
- *  Written by Morris Jette <jette1@llnl.gov>
- *  CODE-OCEC-09-009. All rights reserved.
+ *  Copyright (C) 2012-2013 Los Alamos National Security, LLC.
+ *  Written by Jimmy Cao <Jimmy.Cao@emc.com>, Ralph Castain <rhc@open-mpi.org>
+ *  All rights reserved.
  *
  *  This file is part of SLURM, a resource management program.
  *  For details, see <http://www.schedmd.com/slurmdocs/>.
