@@ -50,7 +50,9 @@
 
 #include "info.h"
 #include "allocate.h"
+#include "allocator.h"
 #include "msg.h"
+#include "argv.h"
 
 
 
@@ -73,15 +75,11 @@ static uint16_t sched_port;
 
 static void *	_msg_thread(void *no_data);
 static void	_proc_msg(slurm_fd_t new_fd, char *msg);
-static size_t	_read_bytes(int fd, char *buf, size_t size);
 static char *	_recv_msg(slurm_fd_t new_fd);
 static size_t	_send_msg(slurm_fd_t new_fd, char *buf, size_t size);
-static void	_send_reply(slurm_fd_t new_fd, char *response);
+static size_t	_read_bytes(int fd, char *buf, size_t size);
 static size_t	_write_bytes(int fd, char *buf, size_t size);
 
-static void _operation(char *cmd_rcv, char *buf_rt);
-static void _parse_allocate_params(char *cmd, uint32_t *request_node_num,
-			char **node_range_list, char **flag, size_t *timeout);
 
 /*****************************************************************************\
  * spawn message hander thread
@@ -336,110 +334,53 @@ static size_t	_send_msg(slurm_fd_t new_fd, char *buf, size_t size)
 }
 
 /*****************************************************************************\
- * Parse the msg(cmd) to several parameters
- *
- * RET - parameters
-\*****************************************************************************/
-static void _parse_allocate_params(char *cmd, uint32_t *request_node_num,
-                                   char **node_range_list, char **flag, size_t *timeout)
-{
-	char *tmp;
-	char *p_str;
-	char *pos;
-
-	tmp = strdup(cmd);
-	p_str = strtok(tmp, " ");
-	while(p_str){
-		if(strstr(p_str, "N=")){
-			pos =  strchr(p_str, '=');
-                        pos++;  /* step over the = */
-			*request_node_num = atoi(pos);
-		}else if(strstr(p_str, "node_list")){
-			pos = strchr(p_str, '=');
-                        pos++;  /* step over the = */
-			*node_range_list = strdup(pos);
-		}else if(strstr(p_str, "flag")){
-			pos = strchr(p_str, '=');
-                        pos++;  /* step over the = */
-			*flag = strdup(pos);
-		}else if(strstr(p_str, "timeout")){
-			pos = strchr(p_str, '=');
-                        pos++;  /* step over the = */
-			*timeout = atol(pos);
-		}
-		p_str = strtok(NULL, " ");
-	}
-        /* cleanup */
-        free(tmp);
-}
-
-/*****************************************************************************\
- * Parse the msg(cmd), then make operation accordingly (query or allocate)
- *
- * RET - msg for sending
-\*****************************************************************************/
-static void _operation(char *cmd_rcv, char *buf_rt)
-{
-	uint16_t nodes, slots;
-	uint32_t request_node_num = 0;
-	char *node_range_list = "";  	//if not specified, by default
-	char *flag = "optional";		//if not specified, by default
-	size_t timeout = 15;			//if not specified, by default
-	uint32_t jobid;
-	char reponse_node_list[SIZE], *seperated_nodelist;
-	int rc;
-
-	//identify the cmd
-	if(!strcasecmp(cmd_rcv, "get total nodes and slots")){
-		rc = get_total_nodes_slots(&nodes, &slots);
-		if(rc == 0)
-			sprintf(buf_rt, "total_nodes=%d total_slots=%d", nodes, slots);
-		else
-			strcpy(buf_rt, "query failure");
-	}else if(!strcasecmp(cmd_rcv, "get available nodes and slots")){
-		rc = get_free_nodes_slots(&nodes, &slots);
-		if(rc == 0)
-			sprintf(buf_rt, "avail_nodes=%d avail_slots=%d", nodes, slots);
-		else
-			strcpy(buf_rt, "query failure");
-	}else if(!strncasecmp(cmd_rcv, "allocate", 8)){
-		_parse_allocate_params(cmd_rcv, &request_node_num,
-					&node_range_list, &flag, &timeout);
-
-		rc = allocate_node(request_node_num, node_range_list, &jobid,
-										reponse_node_list, flag, timeout);
-
-		if(rc == 0){
-			seperated_nodelist = seperate_nodelist_with_comma(reponse_node_list);
-			sprintf(buf_rt, "slurm_jobid=%u allocated_node_list=%s", jobid, seperated_nodelist);
-		} else
-			strcpy(buf_rt, "allocate failure, timeout or request too many nodes");
-	}
-}
-
-/*****************************************************************************\
  * process and respond to a request
 \*****************************************************************************/
 static void	_proc_msg(slurm_fd_t new_fd, char *msg)
 {
 	char send_buf[SIZE];
+	uint16_t nodes, slots;
+	int rc;
+
 	info("AAA: received from client: %s", msg);
 
 	if (new_fd < 0)
 		return;
 
-	if (!msg)
+	if (!msg){
 		strcpy(send_buf, "NULL request, failure");
-	else
-		_operation(msg, send_buf);
+		info("BBB: send to client: %s", send_buf);
+		_send_reply(new_fd, send_buf);
+	}else{
+		//identify the cmd
+		if(!strcasecmp(msg, "get total nodes and slots")){
+			rc = get_total_nodes_slots(&nodes, &slots);
 
-	info("BBB: send to client: %s", send_buf);
+			if(rc == 0)
+				sprintf(send_buf, "total_nodes=%d total_slots=%d", nodes, slots);
+			else
+				strcpy(send_buf, "query failure");
 
-	_send_reply(new_fd, send_buf);
+			info("BBB: send to client: %s", send_buf);
+			send_reply(new_fd, send_buf);
+		}else if(!strcasecmp(msg, "get available nodes and slots")){
+			rc = get_free_nodes_slots(&nodes, &slots);
+
+			if(rc == 0)
+				sprintf(send_buf, "avail_nodes=%d avail_slots=%d", nodes, slots);
+			else
+				strcpy(send_buf, "query failure");
+
+			info("BBB: send to client: %s", send_buf);
+			send_reply(new_fd, send_buf);
+		}else if(!strncasecmp(msg, "allocate", 8)){
+			allocate_job_op(new_fd, msg);
+		}
+	}
 	return;
 }
 
-static void	_send_reply(slurm_fd_t new_fd, char *response)
+extern void	send_reply(slurm_fd_t new_fd, char *response)
 {
 	_send_msg(new_fd, response, strlen(response)+1);
 }

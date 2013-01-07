@@ -101,6 +101,14 @@ static int get_nodelist_optional(uint16_t request_node_num,
 	char *hostname;
 	int i;
 
+	/* if request_node_num is not specified,
+	 * then node_range_list will be final_req_node_list.
+	 */
+	if(request_node_num == 0 && 0 != strlen(node_range_list)){
+		strcpy(final_req_node_list, node_range_list);
+		return 0;
+	}
+
 	/* get all available hostlist in SLURM system */
 	avail_hl_system = get_available_host_list_system();
 
@@ -159,6 +167,14 @@ static int get_nodelist_mandatory(uint16_t request_node_num,
 	char *avail_node_range;
 	char *subset;
 
+	/* if request_node_num is not specified,
+	 * then node_range_list will be final_req_node_list.
+	 */
+	if(request_node_num == 0 && 0 != strlen(node_range_list)){
+		strcpy(final_req_node_list, node_range_list);
+		return 0;
+	}
+
 	avail_hl = choose_available_from_node_list(node_range_list);
 	avail_node_range = slurm_hostlist_ranged_string_malloc(avail_hl);
 
@@ -204,22 +220,36 @@ static int get_nodelist_mandatory(uint16_t request_node_num,
  *		-1 if requested node number is larger than available or timeout
  *		0  successful, final_req_node_list is returned
  */
-int allocate_node_rpc(uint32_t request_node_num, char *node_range_list,
-					uint32_t *jobid, char *reponse_node_list,
-					char *flag, time_t timeout)
+
+//allocate_node_rpc(np, request_node_num, node_range_list, flag,
+//			app_timeout, &slurm_jobid, resp_node_list, tasks_per_node);
+
+int allocate_node_rpc(uint32_t np, uint32_t request_node_num,
+					char *node_range_list, char *flag, time_t timeout,
+					uint32_t *slurm_jobid, char *reponse_node_list,
+					char *tasks_per_node)
 {
 	job_desc_msg_t job_desc_msg;
 	resource_allocation_response_msg_t *job_alloc_resp_msg;
-	char final_req_node_list[SIZE];
+	char final_req_node_list[SIZE] = "";
 	int rc;
 
 	slurm_init_job_desc_msg (&job_desc_msg);
+	printf("+++++after init++++++++++++++\n");
+	printf("jimmy-7-1: job_desc_msg.num_tasks = %u\n", job_desc_msg.num_tasks);
+	printf("jimmy-7-1: job_desc_msg.min_nodes = %u\n", job_desc_msg.min_nodes);
+	printf("jimmy-7-1: job_desc_msg.req_nodes = %s\n", job_desc_msg.req_nodes);
+
 	job_desc_msg.user_id = getuid();
 	job_desc_msg.group_id = getgid();
 	job_desc_msg.contiguous = 0;
 
-	if(!strcmp(node_range_list, "")){
-		job_desc_msg.min_nodes = request_node_num;
+	if(np != 0)
+		job_desc_msg.num_tasks = np;
+
+	if(NULL == node_range_list || 0 == strlen(node_range_list)){
+		if(request_node_num != 0)
+			job_desc_msg.min_nodes = request_node_num;
 	}else{
 		if(!strcasecmp(flag, "mandatory")){
 			rc = get_nodelist_mandatory(request_node_num, node_range_list,
@@ -227,19 +257,25 @@ int allocate_node_rpc(uint32_t request_node_num, char *node_range_list,
 			if(rc == -1){
 				error ("timeout!");
 				return -1;
+			}else if(0 != strlen(final_req_node_list)){
+				job_desc_msg.req_nodes = final_req_node_list;
 			}
-			job_desc_msg.req_nodes = final_req_node_list;
 		} else {  /* flag == "optional" */
 			rc = get_nodelist_optional(request_node_num,
 									node_range_list, final_req_node_list);
 			if(rc == -1){
-				job_desc_msg.min_nodes = request_node_num;
-			}
-			else{
-				job_desc_msg.req_nodes = final_req_node_list;
+				if(request_node_num != 0)
+					job_desc_msg.min_nodes = request_node_num;
+			} else if(0 != strlen(final_req_node_list)) {
+					job_desc_msg.req_nodes = final_req_node_list;
 			}
 		}
 	}
+
+	printf("+++++++++++++++++++\n");
+	printf("jimmy-8-1: job_desc_msg.num_tasks = %u\n", job_desc_msg.num_tasks);
+	printf("jimmy-8-1: job_desc_msg.min_nodes = %u\n", job_desc_msg.min_nodes);
+	printf("jimmy-8-1: job_desc_msg.req_nodes = %s\n", job_desc_msg.req_nodes);
 
 	job_alloc_resp_msg = slurm_allocate_resources_blocking(&job_desc_msg,
 											timeout, NULL);
@@ -251,18 +287,20 @@ int allocate_node_rpc(uint32_t request_node_num, char *node_range_list,
 	info ("allocate [ node_list = %s ] to [ job_id = %u ]",
 			job_alloc_resp_msg->node_list, job_alloc_resp_msg->job_id);
 
-	*jobid = job_alloc_resp_msg->job_id;
+	*slurm_jobid = job_alloc_resp_msg->job_id;
 	strcpy(reponse_node_list, job_alloc_resp_msg->node_list);
+	//jimmy, to do
+	strcpy(tasks_per_node, "2,1(x3)");
 
 	/* free the allocated resource msg */
 	slurm_free_resource_allocation_response_msg(job_alloc_resp_msg);
 
 
 	//kill the job, just for test
-//	if (slurm_kill_job(job_alloc_resp_msg->job_id, SIGKILL, 0)) {
-//		 error ("ERROR: kill job %d\n", slurm_get_errno());
-//		 return -1;
-//	}
+	if (slurm_kill_job(job_alloc_resp_msg->job_id, SIGKILL, 0)) {
+		 error ("ERROR: kill job %d\n", slurm_get_errno());
+		 return -1;
+	}
 
 	return 0;
 }

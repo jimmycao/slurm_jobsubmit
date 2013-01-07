@@ -14,6 +14,11 @@ pkglib_LTLIBRARIES = job_submit_dynalloc.la
 job_submit_dynalloc_la_SOURCES = \
 	allocate.c	\
 	allocate.h	\
+	allocator.c	\
+	allocator.h	\
+	argv.c		\
+	argv.h		\
+	constants.h	\
 	info.c	\
 	info.h	\
 	msg.c	\
