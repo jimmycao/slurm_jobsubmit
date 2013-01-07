@@ -146,7 +146,7 @@ static int _allocate_app_op(char *msg_app, size_t app_timeout,
 	/* out params */
 	uint32_t slurm_jobid;
 	char resp_node_list[SIZE], *seperated_nodelist;
-	char tasks_per_node[SIZE];
+	char tasks_per_node[SIZE]="";
 	int rc;
 
 	_parse_app_params(msg_app, appid, &np, &request_node_num,
@@ -170,7 +170,7 @@ extern int allocate_job_op(slurm_fd_t new_fd, char *msg)
 {
 	char orte_jobid[16] = "";
 	char return_flag[16] = "";
-	size_t job_timeout = 15; //if not specified, by default
+	size_t job_timeout = 15; /* if not specified, by default */
 
 	char send_buf[SIZE];
 	char **app_argv = NULL, **tmp_app_argv;

@@ -75,6 +75,10 @@ static int _get_tasks_per_node(
 
 static char *_uint16_array_to_str(int array_len, const uint16_t *array);
 
+static int _setup_job_desc_msg(uint32_t np, uint32_t request_node_num,
+							char *node_range_list, char *flag,
+							time_t timeout, job_desc_msg_t *job_desc_msg);
+
 /**
  *	select n nodes from the given node_range_list.
  *
@@ -263,6 +267,86 @@ static int _get_tasks_per_node(
 	xfree(tmp);
 	return 0;
 }
+
+
+static int _setup_job_desc_msg(uint32_t np, uint32_t request_node_num,
+							char *node_range_list, char *flag,
+							time_t timeout, job_desc_msg_t *job_desc_msg)
+{
+	char final_req_node_list[SIZE] = "";
+	int rc;
+	hostlist_t hostlist;
+
+	job_desc_msg->user_id = getuid();
+	job_desc_msg->group_id = getgid();
+	job_desc_msg->contiguous = 0;
+
+	/* set np */
+	if(np != 0){
+		job_desc_msg->num_tasks = np;
+		job_desc_msg->min_cpus = np;
+	}
+
+	if(request_node_num != 0){  /* N != 0 */
+		if(strlen(node_range_list) != 0){
+			/* N != 0 && node_list != "", select nodes according to flag */
+			if(strcmp(flag, "mandatory") == 0){
+				rc = _get_nodelist_mandatory(request_node_num,
+						node_range_list, final_req_node_list, timeout, 1);
+
+				if(rc == 0){
+					if(strlen(final_req_node_list) != 0)
+						job_desc_msg->req_nodes = final_req_node_list;
+					else
+						job_desc_msg->min_nodes = request_node_num;
+				}else{
+					error ("timeout!");
+					return -1;
+				}
+			}else{ /* flag == "optional" */
+				rc = _get_nodelist_optional(request_node_num,
+									node_range_list, final_req_node_list);
+				if(rc == 0){
+					if(strlen(final_req_node_list) != 0)
+						job_desc_msg->req_nodes = final_req_node_list;
+					else
+						job_desc_msg->min_nodes = request_node_num;
+				}else{
+					job_desc_msg->min_nodes = request_node_num;
+				}
+			}
+		}else{
+			/* N != 0 && node_list == "" */
+			job_desc_msg->min_nodes = request_node_num;
+		}
+	}else{ /* N == 0 */
+		if(strlen(node_range_list) != 0){
+			/* N == 0 && node_list != "" */
+			if(strcmp(flag, "optional") == 0){
+				hostlist = slurm_hostlist_create(node_range_list);
+				request_node_num = slurm_hostlist_count(hostlist);
+				rc = _get_nodelist_optional(request_node_num,
+									node_range_list, final_req_node_list);
+				if(rc == 0){
+					if(strlen(final_req_node_list) != 0)
+						job_desc_msg->req_nodes = final_req_node_list;
+					else
+						job_desc_msg->min_nodes = request_node_num;
+				}else{
+					job_desc_msg->min_nodes = request_node_num;
+				}
+
+			}else{  /* flag == "mandatory" */
+				job_desc_msg->req_nodes = node_range_list;
+			}
+		}
+		/* if N == 0 && node_list == "", do nothing */
+	}
+
+	return 0;
+}
+
+
 /**
  *	select n nodes from the given node_range_list through rpc
  *
@@ -282,13 +366,11 @@ static int _get_tasks_per_node(
  *	OUT Parameter:
  *		jobid: slurm jobid
  *		reponse_node_list:
+ *		tasks_per_node: like 4(x2) 3,2
  *	RET OUT
  *		-1 if requested node number is larger than available or timeout
- *		0  successful, final_req_node_list is returned
+ *		0  successful
  */
-
-//allocate_node_rpc(np, request_node_num, node_range_list, flag,
-//			app_timeout, &slurm_jobid, resp_node_list, tasks_per_node);
 
 int allocate_node_rpc(uint32_t np, uint32_t request_node_num,
 					char *node_range_list, char *flag, time_t timeout,
@@ -297,78 +379,13 @@ int allocate_node_rpc(uint32_t np, uint32_t request_node_num,
 {
 	job_desc_msg_t job_desc_msg;
 	resource_allocation_response_msg_t *job_alloc_resp_msg;
-	char final_req_node_list[SIZE] = "";
 	int rc;
-	hostlist_t hostlist;
 
 	slurm_init_job_desc_msg (&job_desc_msg);
-
-	job_desc_msg.user_id = getuid();
-	job_desc_msg.group_id = getgid();
-	job_desc_msg.contiguous = 0;
-
-	/* set np */
-	if(np != 0){
-		job_desc_msg.num_tasks = np;
-		job_desc_msg.min_cpus = np;
-	}
-
-	if(request_node_num != 0){  /* N != 0 */
-		if(strlen(node_range_list) != 0){
-			/* N != 0 && node_list != (""), select nodes according to flag */
-			if(strcmp(flag, "mandatory") == 0){
-				rc = _get_nodelist_mandatory(request_node_num, node_range_list,
-											final_req_node_list, timeout, 1);
-
-				if(rc == 0){
-					if(strlen(final_req_node_list) != 0)
-						job_desc_msg.req_nodes = final_req_node_list;
-					else
-						job_desc_msg.min_nodes = request_node_num;
-				}else{
-					error ("timeout!");
-					return -1;
-
-				}
-			}else{ /* flag == "optional" */
-				rc = _get_nodelist_optional(request_node_num,
-									node_range_list, final_req_node_list);
-				if(rc == 0){
-					if(strlen(final_req_node_list) != 0)
-						job_desc_msg.req_nodes = final_req_node_list;
-					else
-						job_desc_msg.min_nodes = request_node_num;
-				}else{
-					job_desc_msg.min_nodes = request_node_num;
-				}
-			}
-		}else{
-			/* N != 0 && node_list == "" */
-			job_desc_msg.min_nodes = request_node_num;
-		}
-	}else{ /* N == 0 */
-		if(strlen(node_range_list) != 0){
-			/* N == 0 && node_list != "" */
-			if(strcmp(flag, "optional") == 0){
-				hostlist = slurm_hostlist_create(node_range_list);
-				request_node_num = slurm_hostlist_count(hostlist);
-				rc = _get_nodelist_optional(request_node_num,
-											node_range_list, final_req_node_list);
-				if(rc == 0){
-					if(strlen(final_req_node_list) != 0)
-						job_desc_msg.req_nodes = final_req_node_list;
-					else
-						job_desc_msg.min_nodes = request_node_num;
-				}else{
-					job_desc_msg.min_nodes = request_node_num;
-				}
-
-			}else{  /* flag == "mandatory" */
-				job_desc_msg.req_nodes = node_range_list;
-			}
-		}
-		/* if N == 0 && node_list == "", do nothing */
-	}
+	rc = _setup_job_desc_msg(np, request_node_num, node_range_list, flag,
+							timeout, &job_desc_msg);
+	if(rc < 0)
+		return rc; /* timeout! */
 
 	job_alloc_resp_msg = slurm_allocate_resources_blocking(&job_desc_msg,
 											timeout, NULL);
@@ -388,11 +405,11 @@ int allocate_node_rpc(uint32_t np, uint32_t request_node_num,
 	/* free the allocated resource msg */
 	slurm_free_resource_allocation_response_msg(job_alloc_resp_msg);
 
-	//kill the job, just for test
-//	if (slurm_kill_job(job_alloc_resp_msg->job_id, SIGKILL, 0)) {
-//		 error ("ERROR: kill job %d\n", slurm_get_errno());
-//		 return -1;
-//	}
+	//kill the job, release the resource, just for test
+	if (slurm_kill_job(job_alloc_resp_msg->job_id, SIGKILL, 0)) {
+		 error ("ERROR: kill job %d\n", slurm_get_errno());
+		 return -1;
+	}
 
 	return 0;
 }
@@ -421,11 +438,10 @@ int allocate_node_rpc(uint32_t np, uint32_t request_node_num,
  *		-1 if requested node number is larger than available or timeout
  *		0  successful, final_req_node_list is returned
  */
-int allocate_node(uint32_t request_node_num, char *node_range_list,
-					uint32_t *jobid, char *reponse_node_list,
-					char *flag, time_t timeout)
+int allocate_node(uint32_t np, uint32_t request_node_num,
+					char *node_range_list, char *flag, time_t timeout,
+					uint32_t *slurm_jobid, char *reponse_node_list)
 {
-	char final_req_node_list[SIZE];
 	int rc, error_code;
 
 	job_desc_msg_t job_desc_msg;
@@ -434,34 +450,14 @@ int allocate_node(uint32_t request_node_num, char *node_range_list,
 	uid_t uid;
 
 	slurm_init_job_desc_msg (&job_desc_msg);
-	uid = getuid();
-	job_desc_msg.user_id = uid;
-	job_desc_msg.group_id = getgid();
-	job_desc_msg.contiguous = 0;
+	rc = _setup_job_desc_msg(np, request_node_num, node_range_list, flag,
+								timeout, &job_desc_msg);
+
+	if(rc < 0)
+		return rc; /* timeout! */
+
 	job_desc_msg.immediate = 0;
 
-	if(!strcmp(node_range_list, "")){
-		job_desc_msg.min_nodes = request_node_num;
-	}else{
-		if(!strcasecmp(flag, "mandatory")){
-			rc = _get_nodelist_mandatory(request_node_num, node_range_list,
-										final_req_node_list, timeout, 1);
-			if(rc == -1){
-				error ("timeout!");
-				return -1;
-			}
-			job_desc_msg.req_nodes = final_req_node_list;
-		} else {  /* flag == "optional" */
-			rc = _get_nodelist_optional(request_node_num,
-									node_range_list, final_req_node_list);
-			if(rc == -1){
-				job_desc_msg.min_nodes = request_node_num;
-			}
-			else{
-				job_desc_msg.req_nodes = final_req_node_list;
-			}
-		}
-	}
 
 	rc = validate_job_create_req(&job_desc_msg);
 	if(rc != 0){
@@ -488,18 +484,18 @@ int allocate_node(uint32_t request_node_num, char *node_range_list,
 
 		/* notice: allocated node list is in 'job_ptr->job_id' */
 		/* not 'job_ptr->alloc_node' */
-
 		if(job_ptr->job_id > 0 && job_ptr->nodes == NULL){
 			/* job is pending, so cancel the job */
 			cancel_job(job_ptr->job_id, uid);
 			return -1;
 		}else{  /* allocate successful */
 			strcpy(reponse_node_list, job_ptr->nodes);
-			*jobid = job_ptr->job_id;
+			*slurm_jobid = job_ptr->job_id;
 			info ("allocate [ allocated_node_list = %s ] to [ slurm_jobid = %u ]",
 							job_ptr->nodes, job_ptr->job_id);
-			//jimmy, just for test
-			cancel_job(job_ptr->job_id, uid);
+
+//			//jimmy, just for test
+//			cancel_job(job_ptr->job_id, uid);
 
 			return 0;
 		}

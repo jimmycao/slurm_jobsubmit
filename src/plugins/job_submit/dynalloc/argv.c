@@ -39,8 +39,6 @@
 #include <string.h>
 
 #include "argv.h"
-#include "constants.h"
-
 
 #define ARGSIZE 	128
 #define SUCCESS_RT 	0
