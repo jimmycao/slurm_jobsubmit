@@ -217,8 +217,6 @@ char* get_hostlist_subset(char *host_name_list, uint16_t node_num)
 
 	hostlist = slurm_hostlist_create(host_name_list);
 	sum = slurm_hostlist_count(hostlist);
-	printf("jimmy-in info.c---, host_name_list = %s, sum = %d\n", host_name_list, sum);
-
 
 	if(sum < node_num){
 		error ("node_num > sum of host in hostlist");

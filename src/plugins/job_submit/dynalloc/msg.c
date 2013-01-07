@@ -228,8 +228,8 @@ static size_t 	_read_bytes(int fd, char *buf, size_t size)
 	ufds.events = POLLIN;
 	ptr = buf;
 	while (bytes_remaining > 0) {
-//		rc = poll(&ufds, 1, 10000);	/* 10 sec timeout *///default
-		rc = poll(&ufds, 1, 100);  //0.1sec, jimmy
+//		rc = poll(&ufds, 1, 10000);	/* 10 sec timeout */
+		rc = poll(&ufds, 1, 100);  //0.1sec
 		if (rc == 0)		/* timed out */
 			break;
 		if ((rc == -1) &&	/* some error */
@@ -262,8 +262,8 @@ static size_t 	_write_bytes(int fd, char *buf, size_t size)
 	ufds.fd = fd;
 	ufds.events = POLLOUT;
 	while (bytes_remaining > 0) {
-//		rc = poll(&ufds, 1, 10000);	/* 10 sec timeout */ //default
-		rc = poll(&ufds, 1, 100); //0.1sec, jimmy
+//		rc = poll(&ufds, 1, 10000);	/* 10 sec timeout */
+		rc = poll(&ufds, 1, 100); //0.1sec
 		if (rc == 0)		/* timed out */
 			break;
 		if ((rc == -1) &&	/* some error */
@@ -342,10 +342,6 @@ static void	_proc_msg(slurm_fd_t new_fd, char *msg)
 	uint16_t nodes, slots;
 	int rc;
 
-	info("AAA: received from client: %s", msg);
-	//jimmy, for test
-//	msg = "allocate return=all jobid=100 timeout=10:app=0 np=5 N=2 node_list=vm1,vm2,vm3 flag=optional:app=1 N=2";
-		msg = "allocate jobid=100 timeout=10:app=2 N=2:app=0 np=5 N=2 node_list=vm1,vm2,vm3";
 	info("AAA: received from client: %s", msg);
 
 	if (new_fd < 0)

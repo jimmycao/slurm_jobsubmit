@@ -149,19 +149,8 @@ static int _allocate_app_op(char *msg_app, size_t app_timeout,
 	char tasks_per_node[SIZE];
 	int rc;
 
-
 	_parse_app_params(msg_app, appid, &np, &request_node_num,
 									node_range_list, flag);
-
-	printf("---------------------------------\n");
-	printf("jimmy-9-2: msg_app = %s\n", msg_app);
-	printf("jimmy-9-2: appid = %s\n", appid);
-	printf("jimmy-9-2: np = %u\n", np);
-	printf("jimmy-9-2: request_node_num = %u\n", request_node_num);
-	printf("jimmy-9-2: node_range_list = %s\n", node_range_list);
-	printf("jimmy-9-2: flag = %s\n", flag);
-	printf("jimmy-9-2: app_timeout = %u\n", app_timeout);
-
 
 	rc = allocate_node_rpc(np, request_node_num, node_range_list, flag,
 			app_timeout, &slurm_jobid, resp_node_list, tasks_per_node);
@@ -174,12 +163,8 @@ static int _allocate_app_op(char *msg_app, size_t app_timeout,
 	} else{
 		sprintf(app_resp_msg, "app=%s allocate_failure", appid);
 	}
-	printf("jimmy-9-2: app_resp_msg = %s\n", app_resp_msg);
 	return 0;
 }
-
-
-//msg = allocate jobid=100 return=all timeout=10:app=0 np=5 N=2 node_list=vm1,vm2,vm3 flag=optional timeout=20:app=1 N=2
 
 extern int allocate_job_op(slurm_fd_t new_fd, char *msg)
 {
@@ -203,11 +188,6 @@ extern int allocate_job_op(slurm_fd_t new_fd, char *msg)
 		if(strstr(*tmp_app_argv, "allocate")){
 			_parse_job_params(*tmp_app_argv, orte_jobid,
 								return_flag, &job_timeout);
-			printf("------------------------\n");
-			printf("jimmy-9-1: *argv = %s\n", *tmp_app_argv);
-			printf("jimmy-9-1: orte_jobid = %s\n", orte_jobid);
-			printf("jimmy-9-1: return_flag = %s\n", return_flag);
-			printf("jimmy-9-1: timeout = %lu\n", job_timeout);
 		}else if(strstr(*tmp_app_argv, "app")){
 			app_timeout = job_timeout / app_count;
 			_allocate_app_op(*tmp_app_argv, app_timeout, app_resp_msg);

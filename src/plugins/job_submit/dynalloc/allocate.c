@@ -111,11 +111,8 @@ static int _get_nodelist_optional(uint16_t request_node_num,
 	/* get all available hostlist in SLURM system */
 	avail_hl_system = get_available_host_list_system();
 
-	if(request_node_num > slurm_hostlist_count(avail_hl_system)){
-		printf("jimmy-a: request_node_num > slurm_hostlist_count(avail_hl_system)\n");
+	if(request_node_num > slurm_hostlist_count(avail_hl_system))
 		return -1;
-	}
-
 
 	avail_hl_pool = choose_available_from_node_list(node_range_list);
 	avail_pool_range = slurm_hostlist_ranged_string_malloc(avail_hl_pool);
@@ -336,7 +333,6 @@ int allocate_node_rpc(uint32_t np, uint32_t request_node_num,
 			}else{ /* flag == "optional" */
 				rc = _get_nodelist_optional(request_node_num,
 									node_range_list, final_req_node_list);
-				printf("jimmy-a: final_req_node_list = %s\n", final_req_node_list);
 				if(rc == 0){
 					if(strlen(final_req_node_list) != 0)
 						job_desc_msg.req_nodes = final_req_node_list;
@@ -354,14 +350,10 @@ int allocate_node_rpc(uint32_t np, uint32_t request_node_num,
 		if(strlen(node_range_list) != 0){
 			/* N == 0 && node_list != "" */
 			if(strcmp(flag, "optional") == 0){
-
 				hostlist = slurm_hostlist_create(node_range_list);
 				request_node_num = slurm_hostlist_count(hostlist);
-				printf("jimmy-in ---, node_range_list = %s, request_node_num = %d\n", node_range_list, request_node_num);
-//============================
 				rc = _get_nodelist_optional(request_node_num,
 											node_range_list, final_req_node_list);
-				printf("jimmy-a: final_req_node_list = %s\n", final_req_node_list);
 				if(rc == 0){
 					if(strlen(final_req_node_list) != 0)
 						job_desc_msg.req_nodes = final_req_node_list;
@@ -377,46 +369,6 @@ int allocate_node_rpc(uint32_t np, uint32_t request_node_num,
 		}
 		/* if N == 0 && node_list == "", do nothing */
 	}
-
-
-
-//	if(NULL == node_range_list || 0 == strlen(node_range_list)){
-//		if(request_node_num != 0)
-//			job_desc_msg.min_nodes = request_node_num;
-//		printf("jimmy-a: node_range_list = %s\n", node_range_list);
-//		printf("jimmy-a: job_desc_msg.min_nodes = %u\n", job_desc_msg.min_nodes);
-//	}else{
-//		/* if node_range_list is not empty, set job_desc_msg.req_nodes or
-//		 * job_desc_msg.min_nodes according to 'flag' */
-//		if(!strcasecmp(flag, "mandatory")){
-//			rc = _get_nodelist_mandatory(request_node_num, node_range_list,
-//										final_req_node_list, timeout, 1);
-//			if(rc == -1){
-//				error ("timeout!");
-//				return -1;
-//			}
-//
-//			if(0 != strlen(final_req_node_list)){
-//				job_desc_msg.req_nodes = final_req_node_list;
-//			}
-//		} else {  /* flag == "optional" */
-//			rc = _get_nodelist_optional(request_node_num,
-//									node_range_list, final_req_node_list);
-//			if(rc == -1){
-//				if(request_node_num != 0)
-//					job_desc_msg.min_nodes = request_node_num;
-//			}
-//
-//			if(0 != strlen(final_req_node_list)) {
-//					job_desc_msg.req_nodes = final_req_node_list;
-//			}
-//		}
-//	}
-
-	printf("++++++++ after mandatory/optional +++++++++\n");
-	printf("jimmy-c: job_desc_msg.num_tasks = %u\n", job_desc_msg.num_tasks);
-	printf("jimmy-c: job_desc_msg.min_nodes = %u\n", job_desc_msg.min_nodes);
-	printf("jimmy-c: job_desc_msg.req_nodes = %s\n", job_desc_msg.req_nodes);
 
 	job_alloc_resp_msg = slurm_allocate_resources_blocking(&job_desc_msg,
 											timeout, NULL);
