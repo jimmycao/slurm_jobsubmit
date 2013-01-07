@@ -54,7 +54,17 @@
 #include "slurm/slurm.h"
 #include "msg.h"
 
-
+/*
+ * allocate resources for a job.
+ * The job can consist of several apps.
+ *
+ * IN:
+ * 	new_fd: send allocation result to socket_fd
+ * 	msg: resource requirement
+ * OUT Parameter:
+ * RET OUT:
+ *
+ */
 extern int allocate_job_op(slurm_fd_t new_fd, char *msg);
 
 #endif /* ALLOCATOR_H_ */

@@ -59,13 +59,16 @@ static int _allocate_app_op(char *msg_app, size_t app_timeout,
 							char *app_resp_msg);
 
 /*
- * Parse the msg(cmd) to obtain several parameters
+ * Parse the job part of msg(cmd) to obtain job parameters
  *
  * IN:
+ * 	cmd: job part of msg
  * OUT Parameter:
- * RET OUT
- * 	-1  if
- * 	0
+ * 	orte_jobid
+ * 	return_flag
+ * 	job_timeout
+ * RET OUT:
+ * 	void
  */
 static void _parse_job_params(char *cmd, char *orte_jobid,
 				char *return_flag,	size_t *job_timeout)
@@ -96,6 +99,20 @@ static void _parse_job_params(char *cmd, char *orte_jobid,
 		free(tmp);
 }
 
+/*
+ * Parse the app part of msg(cmd) to obtain app parameters
+ *
+ * IN:
+ * 	cmd: app part of msg
+ * OUT Parameter:
+ * 	appid
+ * 	np: number of process
+ * 	request_node_num
+ * 	node_range_list
+ * 	flag
+ * RET OUT:
+ * 	void
+ */
 static void _parse_app_params(char *cmd, char *appid, uint32_t *np,
 								uint32_t *request_node_num,
 								char *node_range_list, char *flag)
@@ -134,7 +151,17 @@ static void _parse_app_params(char *cmd, char *appid, uint32_t *np,
         free(tmp);
 }
 
-
+/*
+ * allocate resource for app
+ *
+ * IN:
+ * 	msg_app: cmd of allocation requirement
+ * 	app_timeout:
+ * OUT Parameter:
+ * 	app_resp_msg: allocation result
+ * RET OUT:
+ *
+ */
 static int _allocate_app_op(char *msg_app, size_t app_timeout,
 							char *app_resp_msg)
 {
@@ -166,6 +193,17 @@ static int _allocate_app_op(char *msg_app, size_t app_timeout,
 	return 0;
 }
 
+/*
+ * allocate resources for a job.
+ * The job can consist of several apps.
+ *
+ * IN:
+ * 	new_fd: send allocation result to socket_fd
+ * 	msg: resource requirement
+ * OUT Parameter:
+ * RET OUT:
+ *
+ */
 extern int allocate_job_op(slurm_fd_t new_fd, char *msg)
 {
 	char orte_jobid[16] = "";
