@@ -75,7 +75,7 @@
  *		-1 if requested node number is larger than available or timeout
  *		0  successful, final_req_node_list is returned
  */
-int allocate_node_rpc(uint32_t np, uint32_t request_node_num,
+extern int allocate_node_rpc(uint32_t np, uint32_t request_node_num,
 					char *node_range_list, char *flag, time_t timeout,
 					uint32_t *slurm_jobid, char *reponse_node_list,
 					char *tasks_per_node);

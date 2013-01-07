@@ -42,7 +42,9 @@
 #include "constants.h"
 
 
-#define ARGSIZE 128
+#define ARGSIZE 	128
+#define SUCCESS_RT 	0
+#define ERROR_RT  	-1
 /*
  * Append a string to the end of a new or existing argv array.
  */
@@ -51,13 +53,13 @@ int argv_append(int *argc, char ***argv, const char *arg)
     int rc;
 
     /* add the new element */
-    if (DYNALLOC_SUCCESS != (rc = argv_append_nosize(argv, arg))) {
+    if (SUCCESS_RT != (rc = argv_append_nosize(argv, arg))) {
         return rc;
     }
 
     *argc = argv_count(*argv);
 
-    return DYNALLOC_SUCCESS;
+    return SUCCESS_RT;
 }
 
 int argv_append_nosize(char ***argv, const char *arg)
@@ -69,7 +71,7 @@ int argv_append_nosize(char ***argv, const char *arg)
   if (NULL == *argv) {
     *argv = (char**) malloc(2 * sizeof(char *));
     if (NULL == *argv) {
-        return DYNALLOC_ERR_OUT_OF_RESOURCE;
+        return ERROR_RT;
     }
     argc = 0;
     (*argv)[0] = NULL;
@@ -83,7 +85,7 @@ int argv_append_nosize(char ***argv, const char *arg)
 
         *argv = (char**) realloc(*argv, (argc + 2) * sizeof(char *));
         if (NULL == *argv) {
-            return DYNALLOC_ERR_OUT_OF_RESOURCE;
+            return ERROR_RT;
         }
     }
 
@@ -91,13 +93,13 @@ int argv_append_nosize(char ***argv, const char *arg)
 
     (*argv)[argc] = strdup(arg);
     if (NULL == (*argv)[argc]) {
-        return DYNALLOC_ERR_OUT_OF_RESOURCE;
+        return ERROR_RT;
     }
 
     argc = argc + 1;
     (*argv)[argc] = NULL;
 
-    return DYNALLOC_SUCCESS;
+    return SUCCESS_RT;
 }
 
 int argv_prepend_nosize(char ***argv, const char *arg)
@@ -110,7 +112,7 @@ int argv_prepend_nosize(char ***argv, const char *arg)
     if (NULL == *argv) {
         *argv = (char**) malloc(2 * sizeof(char *));
         if (NULL == *argv) {
-            return DYNALLOC_ERR_OUT_OF_RESOURCE;
+            return ERROR_RT;
         }
         (*argv)[0] = strdup(arg);
         (*argv)[1] = NULL;
@@ -120,7 +122,7 @@ int argv_prepend_nosize(char ***argv, const char *arg)
 
         *argv = (char**) realloc(*argv, (argc + 2) * sizeof(char *));
         if (NULL == *argv) {
-            return DYNALLOC_ERR_OUT_OF_RESOURCE;
+            return ERROR_RT;
         }
         (*argv)[argc+1] = NULL;
 
@@ -131,7 +133,7 @@ int argv_prepend_nosize(char ***argv, const char *arg)
         (*argv)[0] = strdup(arg);
     }
 
-    return DYNALLOC_SUCCESS;
+    return SUCCESS_RT;
 }
 
 int argv_append_unique_nosize(char ***argv, const char *arg, bool overwrite)
@@ -153,7 +155,7 @@ int argv_append_unique_nosize(char ***argv, const char *arg, bool overwrite)
                 free((*argv)[i]);
                 (*argv)[i] = strdup(arg);
             }
-            return DYNALLOC_SUCCESS;
+            return SUCCESS_RT;
         }
     }
 
@@ -206,7 +208,7 @@ static char **argv_split_inter(const char *src_string, int delimiter,
     if (src_string == p) {
       if (include_empty) {
         arg[0] = '\0';
-        if (DYNALLOC_SUCCESS != argv_append(&argc, &argv, arg))
+        if (SUCCESS_RT != argv_append(&argc, &argv, arg))
           return NULL;
       }
     }
@@ -214,7 +216,7 @@ static char **argv_split_inter(const char *src_string, int delimiter,
     /* tail argument, add straight from the original string */
 
     else if ('\0' == *p) {
-      if (DYNALLOC_SUCCESS != argv_append(&argc, &argv, src_string))
+      if (SUCCESS_RT != argv_append(&argc, &argv, src_string))
 	return NULL;
       src_string = p;
       continue;
@@ -230,7 +232,7 @@ static char **argv_split_inter(const char *src_string, int delimiter,
       strncpy(argtemp, src_string, arglen);
       argtemp[arglen] = '\0';
 
-      if (DYNALLOC_SUCCESS != argv_append(&argc, &argv, argtemp)) {
+      if (SUCCESS_RT != argv_append(&argc, &argv, argtemp)) {
 	free(argtemp);
 	return NULL;
       }
@@ -244,7 +246,7 @@ static char **argv_split_inter(const char *src_string, int delimiter,
       strncpy(arg, src_string, arglen);
       arg[arglen] = '\0';
 
-      if (DYNALLOC_SUCCESS != argv_append(&argc, &argv, arg))
+      if (SUCCESS_RT != argv_append(&argc, &argv, arg))
 	return NULL;
     }
 
@@ -434,7 +436,7 @@ char **argv_copy(char **argv)
   dupv[0] = NULL;
 
   while (NULL != *argv) {
-    if (DYNALLOC_SUCCESS != argv_append(&dupc, &dupv, *argv)) {
+    if (SUCCESS_RT != argv_append(&dupc, &dupv, *argv)) {
       argv_free(dupv);
       return NULL;
     }
@@ -457,13 +459,13 @@ int argv_delete(int *argc, char ***argv, int start, int num_to_delete)
 
     /* Check for the bozo cases */
     if (NULL == argv || NULL == *argv || 0 == num_to_delete) {
-        return DYNALLOC_SUCCESS;
+        return SUCCESS_RT;
     }
     count = argv_count(*argv);
     if (start > count) {
-        return DYNALLOC_SUCCESS;
+        return SUCCESS_RT;
     } else if (start < 0 || num_to_delete < 0) {
-        return DYNALLOC_ERR_BAD_PARAM;
+        return ERROR_RT;
     }
 
     /* Ok, we have some tokens to delete.  Calculate the new length of
@@ -497,7 +499,7 @@ int argv_delete(int *argc, char ***argv, int start, int num_to_delete)
     /* adjust the argc */
     (*argc) -= num_to_delete;
 
-    return DYNALLOC_SUCCESS;
+    return SUCCESS_RT;
 }
 
 
@@ -509,9 +511,9 @@ int argv_insert(char ***target, int start, char **source)
     /* Check for the bozo cases */
 
     if (NULL == target || NULL == *target || start < 0) {
-        return DYNALLOC_ERR_BAD_PARAM;
+        return ERROR_RT;
     } else if (NULL == source) {
-        return DYNALLOC_SUCCESS;
+        return SUCCESS_RT;
     }
 
     /* Easy case: appending to the end */
@@ -551,7 +553,7 @@ int argv_insert(char ***target, int start, char **source)
 
     /* All done */
 
-    return DYNALLOC_SUCCESS;
+    return SUCCESS_RT;
 }
 
 int argv_insert_element(char ***target, int location, char *source)
@@ -562,16 +564,16 @@ int argv_insert_element(char ***target, int location, char *source)
     /* Check for the bozo cases */
 
     if (NULL == target || NULL == *target || location < 0) {
-        return DYNALLOC_ERR_BAD_PARAM;
+        return ERROR_RT;
     } else if (NULL == source) {
-        return DYNALLOC_SUCCESS;
+        return SUCCESS_RT;
     }
 
     /* Easy case: appending to the end */
     target_count = argv_count(*target);
     if (location > target_count) {
         argv_append(&target_count, target, source);
-        return DYNALLOC_SUCCESS;
+        return SUCCESS_RT;
     }
 
     /* Alloc out new space */
@@ -590,6 +592,6 @@ int argv_insert_element(char ***target, int location, char *source)
     (*target)[location] = strdup(source);
 
     /* All done */
-    return DYNALLOC_SUCCESS;
+    return SUCCESS_RT;
 }
 

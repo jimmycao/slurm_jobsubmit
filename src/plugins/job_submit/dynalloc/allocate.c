@@ -48,6 +48,7 @@
 #include "src/common/bitstring.h"
 #include "src/common/node_conf.h"
 #include "src/common/xmalloc.h"
+#include "src/common/xstring.h"
 
 #include "src/slurmctld/slurmctld.h"
 #include "src/slurmctld/node_scheduler.h"
@@ -59,14 +60,20 @@
 
 #define SIZE 8192
 
-static int get_nodelist_optional(uint16_t request_node_num,
+static int _get_nodelist_optional(uint16_t request_node_num,
 								char *node_range_list,
 								char *final_req_node_list);
 
-static int get_nodelist_mandatory(uint16_t request_node_num,
+static int _get_nodelist_mandatory(uint16_t request_node_num,
 								char *node_range_list,
 								char *final_req_node_list,
 								time_t timeout, int hint);
+
+static int _get_tasks_per_node(
+			const resource_allocation_response_msg_t *alloc,
+		  	const job_desc_msg_t *desc, char *tasks_per_node);
+
+static char *_uint16_array_to_str(int array_len, const uint16_t *array);
 
 /**
  *	select n nodes from the given node_range_list.
@@ -87,7 +94,7 @@ static int get_nodelist_mandatory(uint16_t request_node_num,
  *		-1 if requested node number is larger than available
  *		0  successful, final_req_node_list is returned
  */
-static int get_nodelist_optional(uint16_t request_node_num,
+static int _get_nodelist_optional(uint16_t request_node_num,
 								char *node_range_list,
 								char *final_req_node_list)
 {
@@ -101,19 +108,14 @@ static int get_nodelist_optional(uint16_t request_node_num,
 	char *hostname;
 	int i;
 
-	/* if request_node_num is not specified,
-	 * then node_range_list will be final_req_node_list.
-	 */
-	if(request_node_num == 0 && 0 != strlen(node_range_list)){
-		strcpy(final_req_node_list, node_range_list);
-		return 0;
-	}
-
 	/* get all available hostlist in SLURM system */
 	avail_hl_system = get_available_host_list_system();
 
-	if(request_node_num > slurm_hostlist_count(avail_hl_system))
+	if(request_node_num > slurm_hostlist_count(avail_hl_system)){
+		printf("jimmy-a: request_node_num > slurm_hostlist_count(avail_hl_system)\n");
 		return -1;
+	}
+
 
 	avail_hl_pool = choose_available_from_node_list(node_range_list);
 	avail_pool_range = slurm_hostlist_ranged_string_malloc(avail_hl_pool);
@@ -158,7 +160,7 @@ static int get_nodelist_optional(uint16_t request_node_num,
  *		-1 if requested node number is larger than available or timeout
  *		0  successful, final_req_node_list is returned
  */
-static int get_nodelist_mandatory(uint16_t request_node_num,
+static int _get_nodelist_mandatory(uint16_t request_node_num,
 								char *node_range_list,
 								char *final_req_node_list,
 								time_t timeout, int hint)
@@ -167,14 +169,7 @@ static int get_nodelist_mandatory(uint16_t request_node_num,
 	char *avail_node_range;
 	char *subset;
 
-	/* if request_node_num is not specified,
-	 * then node_range_list will be final_req_node_list.
-	 */
-	if(request_node_num == 0 && 0 != strlen(node_range_list)){
-		strcpy(final_req_node_list, node_range_list);
-		return 0;
-	}
-
+	/* select n(request_node_num) available nodes from node_range_list */
 	avail_hl = choose_available_from_node_list(node_range_list);
 	avail_node_range = slurm_hostlist_ranged_string_malloc(avail_hl);
 
@@ -183,20 +178,94 @@ static int get_nodelist_mandatory(uint16_t request_node_num,
 		strcpy(final_req_node_list, subset);
 	}else{
 		if(timeout == 0 && hint == 1){
-			sleep(10);
+			sleep(5);
 		}else{
-			sleep(10);
-			timeout -= 10;
+			sleep(5);
+			timeout -= 5;
 			hint = 0;
 			if(timeout < 0)
 				return -1;
 		}
-		return get_nodelist_mandatory(request_node_num, node_range_list,
+		return _get_nodelist_mandatory(request_node_num, node_range_list,
 								final_req_node_list, timeout, hint);
 	}
 	return 0;
 }
 
+static char *_uint16_array_to_str(int array_len, const uint16_t *array)
+{
+	int i;
+	int previous = 0;
+	char *sep = ",";  /* seperator */
+	char *str = xstrdup("");
+
+	if(array == NULL)
+		return str;
+
+	for (i = 0; i < array_len; i++) {
+		if ((i+1 < array_len)
+		    && (array[i] == array[i+1])) {
+				previous++;
+				continue;
+		}
+
+		if (i == array_len-1) /* last time through loop */
+			sep = "";
+		if (previous > 0) {
+			xstrfmtcat(str, "%u(x%u)%s",
+				   array[i], previous+1, sep);
+		} else {
+			xstrfmtcat(str, "%u%s", array[i], sep);
+		}
+		previous = 0;
+	}
+
+	return str;
+}
+
+
+static int _get_tasks_per_node(
+			const resource_allocation_response_msg_t *alloc,
+		  	const job_desc_msg_t *desc, char *tasks_per_node)
+{
+	uint32_t num_tasks = desc->num_tasks;
+	slurm_step_layout_t *step_layout = NULL;
+	uint32_t node_cnt = alloc->node_cnt;
+	char *tmp = NULL;
+	int i;
+
+	/* If no tasks were given we will figure it out here
+	 * by totalling up the cpus and then dividing by the
+	 * number of cpus per task */
+	if(num_tasks == NO_VAL) {
+		num_tasks = 0;
+		for (i = 0; i < alloc->num_cpu_groups; i++) {
+			num_tasks += alloc->cpu_count_reps[i]
+				* alloc->cpus_per_node[i];
+		}
+		if((int)desc->cpus_per_task > 1
+		   && desc->cpus_per_task != (uint16_t)NO_VAL)
+			num_tasks /= desc->cpus_per_task;
+		//num_tasks = desc->min_cpus;
+	}
+
+	if(!(step_layout = slurm_step_layout_create(alloc->node_list,
+							alloc->cpus_per_node,
+							alloc->cpu_count_reps,
+							node_cnt,
+							num_tasks,
+							desc->cpus_per_task,
+							desc->task_dist,
+							desc->plane_size)))
+		return -1;
+
+	tmp = _uint16_array_to_str(step_layout->node_cnt, step_layout->tasks);
+	slurm_step_layout_destroy(step_layout);
+	if(NULL != tmp)
+		strcpy(tasks_per_node, tmp);
+	xfree(tmp);
+	return 0;
+}
 /**
  *	select n nodes from the given node_range_list through rpc
  *
@@ -233,49 +302,121 @@ int allocate_node_rpc(uint32_t np, uint32_t request_node_num,
 	resource_allocation_response_msg_t *job_alloc_resp_msg;
 	char final_req_node_list[SIZE] = "";
 	int rc;
+	hostlist_t hostlist;
 
 	slurm_init_job_desc_msg (&job_desc_msg);
-	printf("+++++after init++++++++++++++\n");
-	printf("jimmy-7-1: job_desc_msg.num_tasks = %u\n", job_desc_msg.num_tasks);
-	printf("jimmy-7-1: job_desc_msg.min_nodes = %u\n", job_desc_msg.min_nodes);
-	printf("jimmy-7-1: job_desc_msg.req_nodes = %s\n", job_desc_msg.req_nodes);
 
 	job_desc_msg.user_id = getuid();
 	job_desc_msg.group_id = getgid();
 	job_desc_msg.contiguous = 0;
 
-	if(np != 0)
+	/* set np */
+	if(np != 0){
 		job_desc_msg.num_tasks = np;
-
-	if(NULL == node_range_list || 0 == strlen(node_range_list)){
-		if(request_node_num != 0)
-			job_desc_msg.min_nodes = request_node_num;
-	}else{
-		if(!strcasecmp(flag, "mandatory")){
-			rc = get_nodelist_mandatory(request_node_num, node_range_list,
-										final_req_node_list, timeout, 1);
-			if(rc == -1){
-				error ("timeout!");
-				return -1;
-			}else if(0 != strlen(final_req_node_list)){
-				job_desc_msg.req_nodes = final_req_node_list;
-			}
-		} else {  /* flag == "optional" */
-			rc = get_nodelist_optional(request_node_num,
-									node_range_list, final_req_node_list);
-			if(rc == -1){
-				if(request_node_num != 0)
-					job_desc_msg.min_nodes = request_node_num;
-			} else if(0 != strlen(final_req_node_list)) {
-					job_desc_msg.req_nodes = final_req_node_list;
-			}
-		}
+		job_desc_msg.min_cpus = np;
 	}
 
-	printf("+++++++++++++++++++\n");
-	printf("jimmy-8-1: job_desc_msg.num_tasks = %u\n", job_desc_msg.num_tasks);
-	printf("jimmy-8-1: job_desc_msg.min_nodes = %u\n", job_desc_msg.min_nodes);
-	printf("jimmy-8-1: job_desc_msg.req_nodes = %s\n", job_desc_msg.req_nodes);
+	if(request_node_num != 0){  /* N != 0 */
+		if(strlen(node_range_list) != 0){
+			/* N != 0 && node_list != (""), select nodes according to flag */
+			if(strcmp(flag, "mandatory") == 0){
+				rc = _get_nodelist_mandatory(request_node_num, node_range_list,
+											final_req_node_list, timeout, 1);
+
+				if(rc == 0){
+					if(strlen(final_req_node_list) != 0)
+						job_desc_msg.req_nodes = final_req_node_list;
+					else
+						job_desc_msg.min_nodes = request_node_num;
+				}else{
+					error ("timeout!");
+					return -1;
+
+				}
+			}else{ /* flag == "optional" */
+				rc = _get_nodelist_optional(request_node_num,
+									node_range_list, final_req_node_list);
+				printf("jimmy-a: final_req_node_list = %s\n", final_req_node_list);
+				if(rc == 0){
+					if(strlen(final_req_node_list) != 0)
+						job_desc_msg.req_nodes = final_req_node_list;
+					else
+						job_desc_msg.min_nodes = request_node_num;
+				}else{
+					job_desc_msg.min_nodes = request_node_num;
+				}
+			}
+		}else{
+			/* N != 0 && node_list == "" */
+			job_desc_msg.min_nodes = request_node_num;
+		}
+	}else{ /* N == 0 */
+		if(strlen(node_range_list) != 0){
+			/* N == 0 && node_list != "" */
+			if(strcmp(flag, "optional") == 0){
+
+				hostlist = slurm_hostlist_create(node_range_list);
+				request_node_num = slurm_hostlist_count(hostlist);
+				printf("jimmy-in ---, node_range_list = %s, request_node_num = %d\n", node_range_list, request_node_num);
+//============================
+				rc = _get_nodelist_optional(request_node_num,
+											node_range_list, final_req_node_list);
+				printf("jimmy-a: final_req_node_list = %s\n", final_req_node_list);
+				if(rc == 0){
+					if(strlen(final_req_node_list) != 0)
+						job_desc_msg.req_nodes = final_req_node_list;
+					else
+						job_desc_msg.min_nodes = request_node_num;
+				}else{
+					job_desc_msg.min_nodes = request_node_num;
+				}
+
+			}else{  /* flag == "mandatory" */
+				job_desc_msg.req_nodes = node_range_list;
+			}
+		}
+		/* if N == 0 && node_list == "", do nothing */
+	}
+
+
+
+//	if(NULL == node_range_list || 0 == strlen(node_range_list)){
+//		if(request_node_num != 0)
+//			job_desc_msg.min_nodes = request_node_num;
+//		printf("jimmy-a: node_range_list = %s\n", node_range_list);
+//		printf("jimmy-a: job_desc_msg.min_nodes = %u\n", job_desc_msg.min_nodes);
+//	}else{
+//		/* if node_range_list is not empty, set job_desc_msg.req_nodes or
+//		 * job_desc_msg.min_nodes according to 'flag' */
+//		if(!strcasecmp(flag, "mandatory")){
+//			rc = _get_nodelist_mandatory(request_node_num, node_range_list,
+//										final_req_node_list, timeout, 1);
+//			if(rc == -1){
+//				error ("timeout!");
+//				return -1;
+//			}
+//
+//			if(0 != strlen(final_req_node_list)){
+//				job_desc_msg.req_nodes = final_req_node_list;
+//			}
+//		} else {  /* flag == "optional" */
+//			rc = _get_nodelist_optional(request_node_num,
+//									node_range_list, final_req_node_list);
+//			if(rc == -1){
+//				if(request_node_num != 0)
+//					job_desc_msg.min_nodes = request_node_num;
+//			}
+//
+//			if(0 != strlen(final_req_node_list)) {
+//					job_desc_msg.req_nodes = final_req_node_list;
+//			}
+//		}
+//	}
+
+	printf("++++++++ after mandatory/optional +++++++++\n");
+	printf("jimmy-c: job_desc_msg.num_tasks = %u\n", job_desc_msg.num_tasks);
+	printf("jimmy-c: job_desc_msg.min_nodes = %u\n", job_desc_msg.min_nodes);
+	printf("jimmy-c: job_desc_msg.req_nodes = %s\n", job_desc_msg.req_nodes);
 
 	job_alloc_resp_msg = slurm_allocate_resources_blocking(&job_desc_msg,
 											timeout, NULL);
@@ -284,23 +425,22 @@ int allocate_node_rpc(uint32_t np, uint32_t request_node_num,
 		return -1;
 	}
 
-	info ("allocate [ node_list = %s ] to [ job_id = %u ]",
-			job_alloc_resp_msg->node_list, job_alloc_resp_msg->job_id);
-
+	/* OUT: slurm_jobid, reponse_node_list, tasks_per_node */
 	*slurm_jobid = job_alloc_resp_msg->job_id;
 	strcpy(reponse_node_list, job_alloc_resp_msg->node_list);
-	//jimmy, to do
-	strcpy(tasks_per_node, "2,1(x3)");
+	_get_tasks_per_node(job_alloc_resp_msg, &job_desc_msg, tasks_per_node);
+
+	info ("allocate [ node_list = %s ] to [ job_id = %u ]",
+				job_alloc_resp_msg->node_list, job_alloc_resp_msg->job_id);
 
 	/* free the allocated resource msg */
 	slurm_free_resource_allocation_response_msg(job_alloc_resp_msg);
 
-
 	//kill the job, just for test
-	if (slurm_kill_job(job_alloc_resp_msg->job_id, SIGKILL, 0)) {
-		 error ("ERROR: kill job %d\n", slurm_get_errno());
-		 return -1;
-	}
+//	if (slurm_kill_job(job_alloc_resp_msg->job_id, SIGKILL, 0)) {
+//		 error ("ERROR: kill job %d\n", slurm_get_errno());
+//		 return -1;
+//	}
 
 	return 0;
 }
@@ -352,7 +492,7 @@ int allocate_node(uint32_t request_node_num, char *node_range_list,
 		job_desc_msg.min_nodes = request_node_num;
 	}else{
 		if(!strcasecmp(flag, "mandatory")){
-			rc = get_nodelist_mandatory(request_node_num, node_range_list,
+			rc = _get_nodelist_mandatory(request_node_num, node_range_list,
 										final_req_node_list, timeout, 1);
 			if(rc == -1){
 				error ("timeout!");
@@ -360,7 +500,7 @@ int allocate_node(uint32_t request_node_num, char *node_range_list,
 			}
 			job_desc_msg.req_nodes = final_req_node_list;
 		} else {  /* flag == "optional" */
-			rc = get_nodelist_optional(request_node_num,
+			rc = _get_nodelist_optional(request_node_num,
 									node_range_list, final_req_node_list);
 			if(rc == -1){
 				job_desc_msg.min_nodes = request_node_num;

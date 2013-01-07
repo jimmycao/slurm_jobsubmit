@@ -343,6 +343,10 @@ static void	_proc_msg(slurm_fd_t new_fd, char *msg)
 	int rc;
 
 	info("AAA: received from client: %s", msg);
+	//jimmy, for test
+//	msg = "allocate return=all jobid=100 timeout=10:app=0 np=5 N=2 node_list=vm1,vm2,vm3 flag=optional:app=1 N=2";
+		msg = "allocate jobid=100 timeout=10:app=2 N=2:app=0 np=5 N=2 node_list=vm1,vm2,vm3";
+	info("AAA: received from client: %s", msg);
 
 	if (new_fd < 0)
 		return;
