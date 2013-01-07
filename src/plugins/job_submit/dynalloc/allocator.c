@@ -183,10 +183,10 @@ static int _allocate_app_op(char *msg_app, size_t app_timeout,
 			app_timeout, &slurm_jobid, resp_node_list, tasks_per_node);
 
 	if(rc == 0){
-		seperated_nodelist = seperate_nodelist_with_comma(resp_node_list);
+//		seperated_nodelist = seperate_nodelist_with_comma(resp_node_list);
 		sprintf(app_resp_msg,
 			"app=%s slurm_jobid=%u allocated_node_list=%s tasks_per_node=%s",
-			 appid, slurm_jobid, seperated_nodelist, tasks_per_node);
+			 appid, slurm_jobid, resp_node_list, tasks_per_node);
 	} else{
 		sprintf(app_resp_msg, "app=%s allocate_failure", appid);
 	}
