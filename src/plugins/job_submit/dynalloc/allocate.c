@@ -224,7 +224,18 @@ static char *_uint16_array_to_str(int array_len, const uint16_t *array)
 	return str;
 }
 
-
+/**
+ *	get tasks_per_nodes
+ *
+ *	IN:
+ *		alloc: resource allocation response
+ *		desc: job resource requirement
+ *	OUT Parameter:
+ *		tasks_per_node
+ *	RET OUT
+ *		-1 if timeout
+ *		0  successful, tasks_per_node is returned
+ */
 static int _get_tasks_per_node(
 			const resource_allocation_response_msg_t *alloc,
 		  	const job_desc_msg_t *desc, char *tasks_per_node)
@@ -268,7 +279,21 @@ static int _get_tasks_per_node(
 	return 0;
 }
 
-
+/**
+ *	after initing, setup job_desc_msg_t with specific requirements
+ *
+ *	IN:
+ *		np: number of process to run
+ *		request_node_num: requested node amount
+ *		node_range_list: requested node pool
+ *		flag: optional or mandatory
+ *		timeout:
+ *	OUT Parameter:
+ *		job_desc_msg
+ *	RET OUT
+ *		-1 if timeout
+ *		0  successful, job_desc_msg is returned
+ */
 static int _setup_job_desc_msg(uint32_t np, uint32_t request_node_num,
 							char *node_range_list, char *flag,
 							time_t timeout, job_desc_msg_t *job_desc_msg)
