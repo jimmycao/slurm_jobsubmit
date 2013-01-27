@@ -66,8 +66,7 @@ static int _get_nodelist_optional(uint16_t request_node_num,
 
 static int _get_nodelist_mandatory(uint16_t request_node_num,
 								char *node_range_list,
-								char *final_req_node_list,
-								time_t timeout, int hint);
+								char *final_req_node_list);
 
 static int _get_tasks_per_node(
 			const resource_allocation_response_msg_t *alloc,
@@ -153,8 +152,6 @@ static int _get_nodelist_optional(uint16_t request_node_num,
  *	IN:
  *		request_node_num: requested node num
  *		node_range_list: specified node range to select from
- *		timeout: timeout
- *		hint: to indicate this function is first called or iteration
  *	OUT Parameter:
  *		final_req_node_list
  *	RET OUT
@@ -163,34 +160,23 @@ static int _get_nodelist_optional(uint16_t request_node_num,
  */
 static int _get_nodelist_mandatory(uint16_t request_node_num,
 								char *node_range_list,
-								char *final_req_node_list,
-								time_t timeout, int hint)
+								char *final_req_node_list)
 {
 	hostlist_t avail_hl;
 	char *avail_node_range;
 	char *subset;
 
-	/* select n(request_node_num) available nodes from node_range_list */
+	/* select n (request_node_num) available nodes from node_range_list */
 	avail_hl = choose_available_from_node_list(node_range_list);
 	avail_node_range = slurm_hostlist_ranged_string_malloc(avail_hl);
 
 	if(request_node_num <= slurm_hostlist_count(avail_hl)) {
 		subset = get_hostlist_subset(avail_node_range, request_node_num);
 		strcpy(final_req_node_list, subset);
+		return SLURM_SUCCESS;
 	}else{
-		if(timeout == 0 && hint == 1){
-			sleep(5);
-		}else{
-			sleep(5);
-			timeout -= 5;
-			hint = 0;
-			if(timeout < 0)
-				return -1;
-		}
-		return _get_nodelist_mandatory(request_node_num, node_range_list,
-								final_req_node_list, timeout, hint);
+		return SLURM_FAILURE;
 	}
-	return 0;
 }
 
 static char *_uint16_array_to_str(int array_len, const uint16_t *array)
@@ -317,16 +303,16 @@ static int _setup_job_desc_msg(uint32_t np, uint32_t request_node_num,
 			/* N != 0 && node_list != "", select nodes according to flag */
 			if(strcmp(flag, "mandatory") == 0){
 				rc = _get_nodelist_mandatory(request_node_num,
-						node_range_list, final_req_node_list, timeout, 1);
+						node_range_list, final_req_node_list);
 
-				if(rc == 0){
+				if(SLURM_SUCCESS == rc){
 					if(strlen(final_req_node_list) != 0)
 						job_desc_msg->req_nodes = final_req_node_list;
 					else
 						job_desc_msg->min_nodes = request_node_num;
 				}else{
-					error ("timeout!");
-					return -1;
+					error ("can not meet mandatory requirement");
+					return SLURM_FAILURE;
 				}
 			}else{ /* flag == "optional" */
 				rc = _get_nodelist_optional(request_node_num,

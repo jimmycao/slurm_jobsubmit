@@ -228,7 +228,9 @@ extern int allocate_job_op(slurm_fd_t new_fd, char *msg)
 								return_flag, &job_timeout);
 		}else if(strstr(*tmp_app_argv, "app")){
 			app_timeout = job_timeout / app_count;
+
 			_allocate_app_op(*tmp_app_argv, app_timeout, app_resp_msg);
+
 			if(0 == strcmp(return_flag, "all") && 0 != strlen(app_resp_msg)){
 				argv_append_nosize(&all_resp_msg_argv, app_resp_msg);
 			}else if(0 != strlen(app_resp_msg)){
