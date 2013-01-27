@@ -18,6 +18,8 @@ job_submit_dynalloc_la_SOURCES = \
 	allocator.h	\
 	argv.c		\
 	argv.h		\
+	deallocate.c \
+	deallocate.h \
 	info.c	\
 	info.h	\
 	msg.c	\

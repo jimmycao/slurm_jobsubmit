@@ -3244,6 +3244,7 @@ extern int job_complete(uint32_t job_id, uid_t uid, bool requeue,
 		deallocate_nodes(job_ptr, false, suspended, false);
 	}
 	info("sched: job_complete for JobId=%u successful", job_id);
+	info("sched: job_complete job_return_code = %d", job_return_code); //jimmy
 	return SLURM_SUCCESS;
 }
 

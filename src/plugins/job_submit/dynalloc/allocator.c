@@ -246,7 +246,7 @@ extern int allocate_job_op(slurm_fd_t new_fd, char *msg)
 
 	if(0 == strcmp(return_flag, "all")){
 		sprintf(send_buf, "jobid=%s", orte_jobid);
-		/* all_resp_msg_argv will be freed*/
+		/* all_resp_msg_argv will be freed */
 		tmp_all_resp_msg_argv = all_resp_msg_argv;
 		while(*tmp_all_resp_msg_argv){
 			sprintf(send_buf, "%s:%s", send_buf, *tmp_all_resp_msg_argv);

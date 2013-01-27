@@ -51,6 +51,7 @@
 #include "info.h"
 #include "allocate.h"
 #include "allocator.h"
+#include "deallocate.h"
 #include "msg.h"
 #include "argv.h"
 
@@ -350,7 +351,7 @@ static void	_proc_msg(slurm_fd_t new_fd, char *msg)
 	if (!msg){
 		strcpy(send_buf, "NULL request, failure");
 		info("BBB: send to client: %s", send_buf);
-		_send_reply(new_fd, send_buf);
+		send_reply(new_fd, send_buf);
 	}else{
 		//identify the cmd
 		if(!strcasecmp(msg, "get total nodes and slots")){
@@ -375,6 +376,8 @@ static void	_proc_msg(slurm_fd_t new_fd, char *msg)
 			send_reply(new_fd, send_buf);
 		}else if(!strncasecmp(msg, "allocate", 8)){
 			allocate_job_op(new_fd, msg);
+		}else if(!strncasecmp(msg, "deallocate", 10)){
+			deallocate(new_fd, msg);
 		}
 	}
 	return;

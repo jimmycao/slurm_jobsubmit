@@ -108,7 +108,7 @@ am__installdirs = "$(DESTDIR)$(pkglibdir)"
 LTLIBRARIES = $(pkglib_LTLIBRARIES)
 job_submit_dynalloc_la_LIBADD =
 am_job_submit_dynalloc_la_OBJECTS = allocate.lo allocator.lo argv.lo \
-	info.lo msg.lo job_submit_dynalloc.lo
+	deallocate.lo info.lo msg.lo job_submit_dynalloc.lo
 job_submit_dynalloc_la_OBJECTS = $(am_job_submit_dynalloc_la_OBJECTS)
 job_submit_dynalloc_la_LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
@@ -351,6 +351,8 @@ job_submit_dynalloc_la_SOURCES = \
 	allocator.h	\
 	argv.c		\
 	argv.h		\
+	deallocate.c \
+	deallocate.h \
 	info.c	\
 	info.h	\
 	msg.c	\
@@ -435,6 +437,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/allocate.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/allocator.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/argv.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/deallocate.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/info.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/job_submit_dynalloc.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/msg.Plo@am__quote@

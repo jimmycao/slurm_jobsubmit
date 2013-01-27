@@ -430,11 +430,13 @@ int allocate_node_rpc(uint32_t np, uint32_t request_node_num,
 	/* free the allocated resource msg */
 	slurm_free_resource_allocation_response_msg(job_alloc_resp_msg);
 
+#if 0
 	//kill the job, release the resource, just for test
 	if (slurm_kill_job(job_alloc_resp_msg->job_id, SIGKILL, 0)) {
 		 error ("ERROR: kill job %d\n", slurm_get_errno());
 		 return -1;
 	}
+#endif
 
 	return 0;
 }
@@ -472,7 +474,7 @@ int allocate_node(uint32_t np, uint32_t request_node_num,
 	job_desc_msg_t job_desc_msg;
 	struct job_record *job_ptr;
 	bool job_waiting = false;
-	uid_t uid;
+	uid_t uid = getuid();;
 
 	slurm_init_job_desc_msg (&job_desc_msg);
 	rc = _setup_job_desc_msg(np, request_node_num, node_range_list, flag,
