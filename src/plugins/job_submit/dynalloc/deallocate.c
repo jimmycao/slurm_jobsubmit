@@ -50,7 +50,7 @@
 #include "argv.h"
 #include "constants.h"
 
-int deallocate(slurm_fd_t new_fd, char *msg)
+int deallocate(slurm_fd_t new_fd, const char *msg)
 {
 	char **jobid_argv = NULL, **tmp_jobid_argv;
 	char *pos;

@@ -173,7 +173,7 @@ char* get_available_host_list_range_sytem()
  *	RET OUT
  *		available node list
  */
-hostlist_t choose_available_from_node_list(char *node_list)
+hostlist_t choose_available_from_node_list(const char *node_list)
 {
 	char *hostname;
 	hostlist_t given_hl;
@@ -206,7 +206,7 @@ hostlist_t choose_available_from_node_list(char *node_list)
  *		the subset node range, NULL if the node number of subset is
  *		larger than the node number of host_name_list
  */
-char* get_hostlist_subset(char *host_name_list, uint16_t node_num)
+char* get_hostlist_subset(const char *host_name_list, uint16_t node_num)
 {
 	hostlist_t hostlist;
 	hostlist_t temp_hl;
@@ -249,7 +249,7 @@ char* get_hostlist_subset(char *host_name_list, uint16_t node_num)
  *	RET OUT
  *		comma seperated nodelist
  */
-char* seperate_nodelist_with_comma(char *node_list)
+char* seperate_nodelist_with_comma(const char *node_list)
 {
 	char *parsed_nodelist = NULL;
 	char *tmp;

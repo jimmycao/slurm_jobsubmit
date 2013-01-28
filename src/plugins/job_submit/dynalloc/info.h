@@ -108,7 +108,7 @@ extern char* get_available_host_list_range_sytem();
  *	RET OUT
  *		available node list
  */
-extern hostlist_t choose_available_from_node_list(char *request_node_list);
+extern hostlist_t choose_available_from_node_list(const char *node_list);
 
 /**
  *	get a subset node range with node_num nodes from a host_name_list
@@ -121,7 +121,7 @@ extern hostlist_t choose_available_from_node_list(char *request_node_list);
  *		the subset node range, NULL if the node number of subset is
  *		larger than the node number of host_name_list
  */
-extern char* get_hostlist_subset(char *host_name_list, uint16_t node_num);
+extern char* get_hostlist_subset(const char *host_name_list, uint16_t node_num);
 
 /**
  *	transform nodelist with regular expression into
@@ -135,6 +135,6 @@ extern char* get_hostlist_subset(char *host_name_list, uint16_t node_num);
  *	RET OUT
  *		comma seperated nodelist
  */
-extern char* seperate_nodelist_with_comma(char *node_list);
+extern char* seperate_nodelist_with_comma(const char *node_list);
 
 #endif /* INFO_H_ */

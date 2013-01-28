@@ -47,14 +47,15 @@
 #include "constants.h"
 
 
-static void _parse_job_params(char *cmd, char *orte_jobid,
-				char *return_flag,	size_t *job_timeout);
+static void _parse_job_params(const char *cmd, char *orte_jobid,
+					char *return_flag,	size_t *job_timeout);
 
-static void _parse_app_params(char *cmd, char *appid, uint32_t *np,
-								uint32_t *request_node_num,
-								char *node_range_list, char *flag);
+static void _parse_app_params(const char *cmd, char *appid,
+					uint32_t *np, uint32_t *request_node_num,
+					char *node_range_list, char *flag);
 
-static int _allocate_app_op(char *msg_app, size_t app_timeout,
+static int _allocate_app_op(const char *msg_app,
+							size_t app_timeout,
 							char *app_resp_msg);
 
 /*
@@ -69,8 +70,8 @@ static int _allocate_app_op(char *msg_app, size_t app_timeout,
  * RET OUT:
  * 	void
  */
-static void _parse_job_params(char *cmd, char *orte_jobid,
-				char *return_flag,	size_t *job_timeout)
+static void _parse_job_params(const char *cmd, char *orte_jobid,
+					char *return_flag,	size_t *job_timeout)
 {
 	char *tmp;
 	char *p_str;
@@ -112,9 +113,9 @@ static void _parse_job_params(char *cmd, char *orte_jobid,
  * RET OUT:
  * 	void
  */
-static void _parse_app_params(char *cmd, char *appid, uint32_t *np,
-								uint32_t *request_node_num,
-								char *node_range_list, char *flag)
+static void _parse_app_params(const char *cmd, char *appid,
+					uint32_t *np, uint32_t *request_node_num,
+					char *node_range_list, char *flag)
 {
 	char *tmp;
 	char *p_str;
@@ -161,7 +162,8 @@ static void _parse_app_params(char *cmd, char *appid, uint32_t *np,
  * RET OUT:
  *
  */
-static int _allocate_app_op(char *msg_app, size_t app_timeout,
+static int _allocate_app_op(const char *msg_app,
+							size_t app_timeout,
 							char *app_resp_msg)
 {
 	char appid[16];
@@ -171,7 +173,7 @@ static int _allocate_app_op(char *msg_app, size_t app_timeout,
 	char flag[16] = "mandatory";  /* if not specified, by default */
 	/* out params */
 	uint32_t slurm_jobid;
-	char resp_node_list[SIZE], *seperated_nodelist;
+	char resp_node_list[SIZE];
 	char tasks_per_node[SIZE]="";
 	int rc;
 
@@ -182,7 +184,6 @@ static int _allocate_app_op(char *msg_app, size_t app_timeout,
 			app_timeout, &slurm_jobid, resp_node_list, tasks_per_node);
 
 	if(SLURM_SUCCESS == rc){
-//		seperated_nodelist = seperate_nodelist_with_comma(resp_node_list);
 		sprintf(app_resp_msg,
 			"app=%s slurm_jobid=%u allocated_node_list=%s tasks_per_node=%s",
 			 appid, slurm_jobid, resp_node_list, tasks_per_node);
@@ -203,7 +204,7 @@ static int _allocate_app_op(char *msg_app, size_t app_timeout,
  * RET OUT:
  *
  */
-extern int allocate_job_op(slurm_fd_t new_fd, char *msg)
+extern int allocate_job_op(slurm_fd_t new_fd, const char *msg)
 {
 	char orte_jobid[16] = "";
 	char return_flag[16] = "";

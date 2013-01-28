@@ -57,6 +57,6 @@
 
 #include "msg.h"
 
-extern int deallocate(slurm_fd_t new_fd, char *msg);
+extern int deallocate(slurm_fd_t new_fd, const char *msg);
 
 #endif /* DEALLOCATE_H_ */

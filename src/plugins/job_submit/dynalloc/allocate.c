@@ -61,11 +61,11 @@
 
 
 static int _get_nodelist_optional(uint16_t request_node_num,
-								char *node_range_list,
+								const char *node_range_list,
 								char *final_req_node_list);
 
 static int _get_nodelist_mandatory(uint16_t request_node_num,
-								char *node_range_list,
+								const char *node_range_list,
 								char *final_req_node_list);
 
 static int _get_tasks_per_node(
@@ -75,7 +75,7 @@ static int _get_tasks_per_node(
 static char *_uint16_array_to_str(int array_len, const uint16_t *array);
 
 static int _setup_job_desc_msg(uint32_t np, uint32_t request_node_num,
-							char *node_range_list, char *flag,
+							const char *node_range_list, const char *flag,
 							time_t timeout, job_desc_msg_t *job_desc_msg);
 
 /**
@@ -98,7 +98,7 @@ static int _setup_job_desc_msg(uint32_t np, uint32_t request_node_num,
  *		0  successful, final_req_node_list is returned
  */
 static int _get_nodelist_optional(uint16_t request_node_num,
-								char *node_range_list,
+								const char *node_range_list,
 								char *final_req_node_list)
 {
 	hostlist_t avail_hl_system;  //available hostlist in slurm
@@ -159,7 +159,7 @@ static int _get_nodelist_optional(uint16_t request_node_num,
  *		0  successful, final_req_node_list is returned
  */
 static int _get_nodelist_mandatory(uint16_t request_node_num,
-								char *node_range_list,
+								const char *node_range_list,
 								char *final_req_node_list)
 {
 	hostlist_t avail_hl;
@@ -281,7 +281,7 @@ static int _get_tasks_per_node(
  *		0  successful, job_desc_msg is returned
  */
 static int _setup_job_desc_msg(uint32_t np, uint32_t request_node_num,
-							char *node_range_list, char *flag,
+							const char *node_range_list, const char *flag,
 							time_t timeout, job_desc_msg_t *job_desc_msg)
 {
 	char final_req_node_list[SIZE] = "";
@@ -317,7 +317,7 @@ static int _setup_job_desc_msg(uint32_t np, uint32_t request_node_num,
 			}else{ /* flag == "optional" */
 				rc = _get_nodelist_optional(request_node_num,
 									node_range_list, final_req_node_list);
-				if(0 == rc){
+				if(SLURM_SUCCESS == rc){
 					if(0 != strlen(final_req_node_list))
 						job_desc_msg->req_nodes = final_req_node_list;
 					else
@@ -338,7 +338,7 @@ static int _setup_job_desc_msg(uint32_t np, uint32_t request_node_num,
 				request_node_num = slurm_hostlist_count(hostlist);
 				rc = _get_nodelist_optional(request_node_num,
 									node_range_list, final_req_node_list);
-				if(0 == rc){
+				if(SLURM_SUCCESS == rc){
 					if(0 != strlen(final_req_node_list))
 						job_desc_msg->req_nodes = final_req_node_list;
 					else
@@ -384,9 +384,9 @@ static int _setup_job_desc_msg(uint32_t np, uint32_t request_node_num,
  */
 
 int allocate_node_rpc(uint32_t np, uint32_t request_node_num,
-					char *node_range_list, char *flag, time_t timeout,
-					uint32_t *slurm_jobid, char *reponse_node_list,
-					char *tasks_per_node)
+					const char *node_range_list, const char *flag,
+					time_t timeout, uint32_t *slurm_jobid,
+					char *reponse_node_list, char *tasks_per_node)
 {
 	job_desc_msg_t job_desc_msg;
 	resource_allocation_response_msg_t *job_alloc_resp_msg;
@@ -452,8 +452,9 @@ int allocate_node_rpc(uint32_t np, uint32_t request_node_num,
  *		0  successful, final_req_node_list is returned
  */
 int allocate_node(uint32_t np, uint32_t request_node_num,
-					char *node_range_list, char *flag, time_t timeout,
-					uint32_t *slurm_jobid, char *reponse_node_list)
+				const char *node_range_list, const char *flag,
+				time_t timeout, uint32_t *slurm_jobid,
+				char *reponse_node_list)
 {
 	int rc, error_code;
 

@@ -65,6 +65,6 @@
  * RET OUT:
  *
  */
-extern int allocate_job_op(slurm_fd_t new_fd, char *msg);
+extern int allocate_job_op(slurm_fd_t new_fd, const char *msg);
 
 #endif /* ALLOCATOR_H_ */
