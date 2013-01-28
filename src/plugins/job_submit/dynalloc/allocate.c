@@ -57,8 +57,8 @@
 
 #include "allocate.h"
 #include "info.h"
+#include "constants.h"
 
-#define SIZE 8192
 
 static int _get_nodelist_optional(uint16_t request_node_num,
 								char *node_range_list,
@@ -115,7 +115,7 @@ static int _get_nodelist_optional(uint16_t request_node_num,
 	avail_hl_system = get_available_host_list_system();
 
 	if(request_node_num > slurm_hostlist_count(avail_hl_system))
-		return -1;
+		return SLURM_FAILURE;
 
 	avail_hl_pool = choose_available_from_node_list(node_range_list);
 	avail_pool_range = slurm_hostlist_ranged_string_malloc(avail_hl_pool);
@@ -140,7 +140,7 @@ static int _get_nodelist_optional(uint16_t request_node_num,
 		strcpy(final_req_node_list,
 				slurm_hostlist_ranged_string_xmalloc(hostlist));
 	}
-	return 0;
+	return SLURM_SUCCESS;
 }
 
 /**
@@ -186,7 +186,7 @@ static char *_uint16_array_to_str(int array_len, const uint16_t *array)
 	char *sep = ",";  /* seperator */
 	char *str = xstrdup("");
 
-	if(array == NULL)
+	if(NULL == array)
 		return str;
 
 	for (i = 0; i < array_len; i++) {
@@ -198,7 +198,7 @@ static char *_uint16_array_to_str(int array_len, const uint16_t *array)
 
 		if (i == array_len-1) /* last time through loop */
 			sep = "";
-		if (previous > 0) {
+		if (0 < previous) {
 			xstrfmtcat(str, "%u(x%u)%s",
 				   array[i], previous+1, sep);
 		} else {
@@ -235,7 +235,7 @@ static int _get_tasks_per_node(
 	/* If no tasks were given we will figure it out here
 	 * by totalling up the cpus and then dividing by the
 	 * number of cpus per task */
-	if(num_tasks == NO_VAL) {
+	if(NO_VAL == num_tasks) {
 		num_tasks = 0;
 		for (i = 0; i < alloc->num_cpu_groups; i++) {
 			num_tasks += alloc->cpu_count_reps[i]
@@ -255,14 +255,14 @@ static int _get_tasks_per_node(
 							desc->cpus_per_task,
 							desc->task_dist,
 							desc->plane_size)))
-		return -1;
+		return SLURM_FAILURE;
 
 	tmp = _uint16_array_to_str(step_layout->node_cnt, step_layout->tasks);
 	slurm_step_layout_destroy(step_layout);
 	if(NULL != tmp)
 		strcpy(tasks_per_node, tmp);
 	xfree(tmp);
-	return 0;
+	return SLURM_SUCCESS;
 }
 
 /**
@@ -293,20 +293,20 @@ static int _setup_job_desc_msg(uint32_t np, uint32_t request_node_num,
 	job_desc_msg->contiguous = 0;
 
 	/* set np */
-	if(np != 0){
+	if(0 != np){
 		job_desc_msg->num_tasks = np;
 		job_desc_msg->min_cpus = np;
 	}
 
-	if(request_node_num != 0){  /* N != 0 */
-		if(strlen(node_range_list) != 0){
+	if(0 != request_node_num){  /* N != 0 */
+		if(0 != strlen(node_range_list)){
 			/* N != 0 && node_list != "", select nodes according to flag */
-			if(strcmp(flag, "mandatory") == 0){
+			if(0 == strcmp(flag, "mandatory")){
 				rc = _get_nodelist_mandatory(request_node_num,
 						node_range_list, final_req_node_list);
 
 				if(SLURM_SUCCESS == rc){
-					if(strlen(final_req_node_list) != 0)
+					if(0 != strlen(final_req_node_list))
 						job_desc_msg->req_nodes = final_req_node_list;
 					else
 						job_desc_msg->min_nodes = request_node_num;
@@ -317,8 +317,8 @@ static int _setup_job_desc_msg(uint32_t np, uint32_t request_node_num,
 			}else{ /* flag == "optional" */
 				rc = _get_nodelist_optional(request_node_num,
 									node_range_list, final_req_node_list);
-				if(rc == 0){
-					if(strlen(final_req_node_list) != 0)
+				if(0 == rc){
+					if(0 != strlen(final_req_node_list))
 						job_desc_msg->req_nodes = final_req_node_list;
 					else
 						job_desc_msg->min_nodes = request_node_num;
@@ -331,15 +331,15 @@ static int _setup_job_desc_msg(uint32_t np, uint32_t request_node_num,
 			job_desc_msg->min_nodes = request_node_num;
 		}
 	}else{ /* N == 0 */
-		if(strlen(node_range_list) != 0){
+		if(0 != strlen(node_range_list)){
 			/* N == 0 && node_list != "" */
-			if(strcmp(flag, "optional") == 0){
+			if(0 == strcmp(flag, "optional")){
 				hostlist = slurm_hostlist_create(node_range_list);
 				request_node_num = slurm_hostlist_count(hostlist);
 				rc = _get_nodelist_optional(request_node_num,
 									node_range_list, final_req_node_list);
-				if(rc == 0){
-					if(strlen(final_req_node_list) != 0)
+				if(0 == rc){
+					if(0 != strlen(final_req_node_list))
 						job_desc_msg->req_nodes = final_req_node_list;
 					else
 						job_desc_msg->min_nodes = request_node_num;
@@ -354,7 +354,7 @@ static int _setup_job_desc_msg(uint32_t np, uint32_t request_node_num,
 		/* if N == 0 && node_list == "", do nothing */
 	}
 
-	return 0;
+	return SLURM_SUCCESS;
 }
 
 
@@ -395,14 +395,14 @@ int allocate_node_rpc(uint32_t np, uint32_t request_node_num,
 	slurm_init_job_desc_msg (&job_desc_msg);
 	rc = _setup_job_desc_msg(np, request_node_num, node_range_list, flag,
 							timeout, &job_desc_msg);
-	if(rc < 0)
-		return rc; /* timeout! */
+	if(rc)
+		return SLURM_FAILURE;
 
 	job_alloc_resp_msg = slurm_allocate_resources_blocking(&job_desc_msg,
 											timeout, NULL);
 	if (!job_alloc_resp_msg) {
 		error("allocate failure, timeout or request too many nodes");
-		return -1;
+		return SLURM_FAILURE;
 	}
 
 	/* OUT: slurm_jobid, reponse_node_list, tasks_per_node */
@@ -420,11 +420,11 @@ int allocate_node_rpc(uint32_t np, uint32_t request_node_num,
 	//kill the job, release the resource, just for test
 	if (slurm_kill_job(job_alloc_resp_msg->job_id, SIGKILL, 0)) {
 		 error ("ERROR: kill job %d\n", slurm_get_errno());
-		 return -1;
+		 return SLURM_FAILURE;
 	}
 #endif
 
-	return 0;
+	return SLURM_SUCCESS;
 }
 
 /**
@@ -466,16 +466,16 @@ int allocate_node(uint32_t np, uint32_t request_node_num,
 	rc = _setup_job_desc_msg(np, request_node_num, node_range_list, flag,
 								timeout, &job_desc_msg);
 
-	if(rc < 0)
-		return rc; /* timeout! */
+	if(rc)
+		return SLURM_FAILURE;
 
 	job_desc_msg.immediate = 0;
 
 
 	rc = validate_job_create_req(&job_desc_msg);
-	if(rc != 0){
+	if(rc){
 		error("invalid job request.");
-		return -1;
+		return SLURM_FAILURE;
 	}
 
 	error_code = job_allocate(&job_desc_msg, job_desc_msg.immediate,
@@ -491,29 +491,30 @@ int allocate_node(uint32_t np, uint32_t request_node_num,
 		(error_code == ESLURM_JOB_HELD))
 		job_waiting = true;
 
-	if ((error_code == SLURM_SUCCESS) ||
-		((job_desc_msg.immediate == 0) && job_waiting)) {
+	if ((SLURM_SUCCESS == error_code) ||
+		((0 == job_desc_msg.immediate) && job_waiting)) {
 		xassert(job_ptr);
 
 		/* notice: allocated node list is in 'job_ptr->job_id' */
 		/* not 'job_ptr->alloc_node' */
-		if(job_ptr->job_id > 0 && job_ptr->nodes == NULL){
+		if(0 < job_ptr->job_id && NULL == job_ptr->nodes){
 			/* job is pending, so cancel the job */
 			cancel_job(job_ptr->job_id, uid);
-			return -1;
+			return SLURM_FAILURE;
 		}else{  /* allocate successful */
 			strcpy(reponse_node_list, job_ptr->nodes);
 			*slurm_jobid = job_ptr->job_id;
 			info ("allocate [ allocated_node_list = %s ] to [ slurm_jobid = %u ]",
 							job_ptr->nodes, job_ptr->job_id);
 
-//			//jimmy, just for test
-//			cancel_job(job_ptr->job_id, uid);
-
-			return 0;
+#if 0
+			/* only for test */
+			cancel_job(job_ptr->job_id, uid);
+#endif
+			return SLURM_SUCCESS;
 		}
 	}else{
-		return -1;
+		return SLURM_FAILURE;
 	}
 }
 
@@ -544,7 +545,7 @@ int cancel_job(uint32_t job_id, uid_t uid)
 		info("Signal %u JobId=%u by UID=%u: %s",
 				SIGKILL, job_id, uid,
 				slurm_strerror(rc));
-		return -1;
+		return SLURM_FAILURE;
 	} else { /* cancel successful */
 		info("sched: Cancel of JobId=%u by UID=%u",
 				job_id, uid);
@@ -552,6 +553,6 @@ int cancel_job(uint32_t job_id, uid_t uid)
 
 		/* Below function provides its own locking */
 		schedule_job_save();
-		return 0;
+		return SLURM_SUCCESS;
 	}
 }

@@ -55,12 +55,6 @@
 #include <sys/types.h>
 #endif
 
-
-#if HAVE_STDBOOL_H
-#  include <stdbool.h>
-#else
-typedef enum {false, true} bool;
-#endif /* !HAVE_STDBOOL_H */
   /**
    * Append a string (by value) to an new or existing NULL-terminated
    * argv array.

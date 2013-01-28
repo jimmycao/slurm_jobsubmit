@@ -67,7 +67,7 @@ int get_total_nodes_slots (uint16_t *nodes, uint16_t *slots)
 	//get node info
 	if(slurm_load_node((time_t)NULL, &node_info_msg_t_ptr, SHOW_ALL)){
 		error("slurm_load_node");
-		return -1;
+		return SLURM_FAILURE;
 	}
 
 	*nodes = node_info_msg_t_ptr->record_count;
@@ -75,7 +75,7 @@ int get_total_nodes_slots (uint16_t *nodes, uint16_t *slots)
 	for(i = 0; i < *nodes; i++)
 		(*slots) += node_info_msg_t_ptr->node_array[i].cpus;
 
-	return 0;
+	return SLURM_SUCCESS;
 }
 
 /**
@@ -101,16 +101,16 @@ int get_free_nodes_slots (uint16_t *nodes, uint16_t *slots)
 	//get node info
 	if(slurm_load_node((time_t)NULL, &node_info_msg_t_ptr, SHOW_ALL)){
 		error("slurm_load_node");
-		return -1;
+		return SLURM_FAILURE;
 	}
 
 	for(i = 0; i < node_info_msg_t_ptr->record_count; i++){
-		if(node_info_msg_t_ptr->node_array[i].node_state == NODE_STATE_IDLE){
+		if(NODE_STATE_IDLE == node_info_msg_t_ptr->node_array[i].node_state){
 			(*nodes) ++;
 			(*slots) += node_info_msg_t_ptr->node_array[i].cpus;
 		}
 	}
-	return 0;
+	return SLURM_SUCCESS;
 }
 
 /**
@@ -135,7 +135,7 @@ hostlist_t get_available_host_list_system()
 
 	hostlist = slurm_hostlist_create(NULL);
 	for(i = 0; i < node_info_ptr->record_count;  i++){
-		if(node_info_ptr->node_array[i].node_state == NODE_STATE_IDLE){
+		if(NODE_STATE_IDLE == node_info_ptr->node_array[i].node_state){
 			 slurm_hostlist_push_host(hostlist,
 					 node_info_ptr->node_array[i].name);
 		}
@@ -185,7 +185,7 @@ hostlist_t choose_available_from_node_list(char *node_list)
 	result_hl = slurm_hostlist_create(NULL);
 
 	while((hostname = slurm_hostlist_shift(given_hl))){
-		if(slurm_hostlist_find (avail_hl_system, hostname) != -1) {
+		if(-1 != slurm_hostlist_find (avail_hl_system, hostname)) {
 			slurm_hostlist_push_host(result_hl, hostname);
 		}
 	}
@@ -230,7 +230,7 @@ char* get_hostlist_subset(char *host_name_list, uint16_t node_num)
 		slurm_hostlist_push_host(temp_hl, hostname);
 	}
 
-	range = slurm_hostlist_ranged_string_malloc (temp_hl);
+	range = slurm_hostlist_ranged_string_malloc(temp_hl);
 
 	slurm_hostlist_destroy(temp_hl);
 	slurm_hostlist_destroy(hostlist);
@@ -256,13 +256,13 @@ char* seperate_nodelist_with_comma(char *node_list)
 	char *nodename;
 	hostlist_t given_hl;
 
-	if(node_list == NULL)
+	if(NULL == node_list)
 		return NULL;
 
 	given_hl = slurm_hostlist_create(node_list);
 
 	while((nodename = slurm_hostlist_shift(given_hl))){
-		if(parsed_nodelist == NULL)
+		if(NULL == parsed_nodelist)
 			parsed_nodelist = strdup(nodename);
 		else {
 			asprintf(&tmp, "%s,%s", parsed_nodelist, nodename);

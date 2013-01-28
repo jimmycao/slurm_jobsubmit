@@ -44,9 +44,8 @@
 #include "info.h"
 #include "argv.h"
 #include "msg.h"
+#include "constants.h"
 
-
-#define SIZE 2048
 
 static void _parse_job_params(char *cmd, char *orte_jobid,
 				char *return_flag,	size_t *job_timeout);
@@ -182,7 +181,7 @@ static int _allocate_app_op(char *msg_app, size_t app_timeout,
 	rc = allocate_node_rpc(np, request_node_num, node_range_list, flag,
 			app_timeout, &slurm_jobid, resp_node_list, tasks_per_node);
 
-	if(rc == 0){
+	if(SLURM_SUCCESS == rc){
 //		seperated_nodelist = seperate_nodelist_with_comma(resp_node_list);
 		sprintf(app_resp_msg,
 			"app=%s slurm_jobid=%u allocated_node_list=%s tasks_per_node=%s",
@@ -190,7 +189,7 @@ static int _allocate_app_op(char *msg_app, size_t app_timeout,
 	} else{
 		sprintf(app_resp_msg, "app=%s allocate_failure", appid);
 	}
-	return 0;
+	return SLURM_SUCCESS;
 }
 
 /*
@@ -261,5 +260,5 @@ extern int allocate_job_op(slurm_fd_t new_fd, char *msg)
 		send_reply(new_fd, send_buf);
 	}
 
-	return 0;
+	return SLURM_SUCCESS;
 }
