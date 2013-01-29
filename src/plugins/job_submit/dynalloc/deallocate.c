@@ -93,7 +93,7 @@ int deallocate(slurm_fd_t new_fd, const char *msg)
 					slurm_jobid, slurm_strerror(rc));
 		} else {
 			debug2("deallocate JobId=%u ", slurm_jobid);
-			(void) schedule_job_save();	/* Has own locking */
+			(void) schedule_job_save();		/* Has own locking */
 			(void) schedule_node_save();	/* Has own locking */
 		}
 

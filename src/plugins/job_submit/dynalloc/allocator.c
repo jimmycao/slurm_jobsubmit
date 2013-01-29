@@ -180,8 +180,6 @@ static int _allocate_app_op(const char *msg_app,
 	_parse_app_params(msg_app, appid, &np, &request_node_num,
 									node_range_list, flag);
 
-//	rc = allocate_node_rpc(np, request_node_num, node_range_list, flag,
-//			app_timeout, &slurm_jobid, resp_node_list, tasks_per_node);
 	rc = allocate_node(np, request_node_num, node_range_list, flag,
 				app_timeout, &slurm_jobid, resp_node_list, tasks_per_node);
 
