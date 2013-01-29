@@ -92,6 +92,7 @@ extern int allocate_node_rpc(uint32_t np, uint32_t request_node_num,
  *  nodes that are available to fill out the requested number.
  *
  *	IN:
+ *		np: number of process
  *		request_node_num: requested node num
  *		node_range_list: specified node range to select from
  *		flag: optional or mandatory
@@ -107,7 +108,7 @@ extern int allocate_node_rpc(uint32_t np, uint32_t request_node_num,
 extern int allocate_node(uint32_t np, uint32_t request_node_num,
 				const char *node_range_list, const char *flag,
 				time_t timeout, uint32_t *slurm_jobid,
-				char *reponse_node_list);
+				char *reponse_node_list, char *tasks_per_node);
 
 /**
  *	cancel a job
