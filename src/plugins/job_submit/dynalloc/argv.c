@@ -50,23 +50,22 @@ int argv_append(int *argc, char ***argv, const char *arg)
 {
 	int rc;
 
-    /* add the new element */
-    if (SLURM_SUCCESS != (rc = argv_append_nosize(argv, arg))) {
-        return rc;
-    }
+	/* add the new element */
+	if (SLURM_SUCCESS != (rc = argv_append_nosize(argv, arg))) {
+		return rc;
+	}
 
-    *argc = argv_count(*argv);
+	*argc = argv_count(*argv);
 
-    return SLURM_SUCCESS;
+	return SLURM_SUCCESS;
 }
 
 int argv_append_nosize(char ***argv, const char *arg)
 {
-    int argc;
+	int argc;
 
-    /* Create new argv. */
-
-    if (NULL == *argv) {
+	/* Create new argv. */
+	if (NULL == *argv) {
 		*argv = (char**) malloc(2 * sizeof(char *));
 		if (NULL == *argv) {
 			return SLURM_FAILURE;
@@ -74,91 +73,89 @@ int argv_append_nosize(char ***argv, const char *arg)
 		argc = 0;
 		(*argv)[0] = NULL;
 		(*argv)[1] = NULL;
-    }
+	}
 
     /* Extend existing argv. */
-    else {
-        /* count how many entries currently exist */
-        argc = argv_count(*argv);
+	else {
+		/* count how many entries currently exist */
+		argc = argv_count(*argv);
 
-        *argv = (char**) realloc(*argv, (argc + 2) * sizeof(char *));
-        if (NULL == *argv) {
-        	return SLURM_FAILURE;
-        }
-    }
+		*argv = (char**) realloc(*argv, (argc + 2) * sizeof(char *));
+		if (NULL == *argv) {
+			return SLURM_FAILURE;
+		}
+	}
 
-    /* Set the newest element to point to a copy of the arg string */
+	/* Set the newest element to point to a copy of the arg string */
+	(*argv)[argc] = strdup(arg);
+	if (NULL == (*argv)[argc]) {
+		return SLURM_FAILURE;
+	}
 
-    (*argv)[argc] = strdup(arg);
-    if (NULL == (*argv)[argc]) {
-        return SLURM_FAILURE;
-    }
+	argc = argc + 1;
+	(*argv)[argc] = NULL;
 
-    argc = argc + 1;
-    (*argv)[argc] = NULL;
-
-    return SLURM_SUCCESS;
+	return SLURM_SUCCESS;
 }
 
 int argv_prepend_nosize(char ***argv, const char *arg)
 {
-    int argc;
-    int i;
+	int argc;
+	int i;
 
-    /* Create new argv. */
+	/* Create new argv. */
+	if (NULL == *argv) {
+		*argv = (char**) malloc(2 * sizeof(char *));
+		if (NULL == *argv) {
+			return SLURM_FAILURE;
+		}
+		(*argv)[0] = strdup(arg);
+		(*argv)[1] = NULL;
+	} else {
+		/* count how many entries currently exist */
+		argc = argv_count(*argv);
 
-    if (NULL == *argv) {
-        *argv = (char**) malloc(2 * sizeof(char *));
-        if (NULL == *argv) {
-            return SLURM_FAILURE;
-        }
-        (*argv)[0] = strdup(arg);
-        (*argv)[1] = NULL;
-    } else {
-        /* count how many entries currently exist */
-        argc = argv_count(*argv);
+		*argv = (char**) realloc(*argv, (argc + 2) * sizeof(char *));
+		if (NULL == *argv) {
+			return SLURM_FAILURE;
+		}
+		(*argv)[argc+1] = NULL;
 
-        *argv = (char**) realloc(*argv, (argc + 2) * sizeof(char *));
-        if (NULL == *argv) {
-            return SLURM_FAILURE;
-        }
-        (*argv)[argc+1] = NULL;
+		/* shift all existing elements down 1 */
+		for (i=argc; 0 < i; i--) {
+			(*argv)[i] = (*argv)[i-1];
+		}
+		(*argv)[0] = strdup(arg);
+	}
 
-        /* shift all existing elements down 1 */
-        for (i=argc; 0 < i; i--) {
-            (*argv)[i] = (*argv)[i-1];
-        }
-        (*argv)[0] = strdup(arg);
-    }
-
-    return SLURM_SUCCESS;
+	return SLURM_SUCCESS;
 }
 
 int argv_append_unique_nosize(char ***argv, const char *arg, bool overwrite)
 {
-    int i;
+	int i;
 
-    /* if the provided array is NULL, then the arg cannot be present,
+	/* if the provided array is NULL, then the arg cannot be present,
      * so just go ahead and append
      */
-    if (NULL == *argv) {
-        return argv_append_nosize(argv, arg);
-    }
+	if (NULL == *argv) {
+		return argv_append_nosize(argv, arg);
+	}
 
-    /* see if this arg is already present in the array */
-    for (i=0; NULL != (*argv)[i]; i++) {
-        if (0 == strcmp(arg, (*argv)[i])) {
-            /* already exists - are we authorized to overwrite? */
-            if (overwrite) {
-                free((*argv)[i]);
-                (*argv)[i] = strdup(arg);
-            }
-            return SLURM_SUCCESS;
-        }
-    }
+	/* see if this arg is already present in the array */
+	for (i=0; NULL != (*argv)[i]; i++) {
+		if (0 == strcmp(arg, (*argv)[i])) {
+			/* already exists - are we authorized to overwrite? */
+			if (overwrite) {
+				free((*argv)[i]);
+				(*argv)[i] = strdup(arg);
+			}
+			return SLURM_SUCCESS;
+		}
+	}
 
-    /* we get here if the arg is not in the array - so add it */
-    return argv_append_nosize(argv, arg);
+	/* we get here if the arg is not in the array - so add it */
+	return argv_append_nosize(argv, arg);
 }
 
 /*
@@ -183,7 +180,7 @@ void argv_free(char **argv)
  * Split a string into a NULL-terminated argv array.
  */
 static char **argv_split_inter(const char *src_string, int delimiter,
-        int include_empty)
+		int include_empty)
 {
 	char arg[SIZE];
 	char **argv = NULL;
@@ -202,7 +199,6 @@ static char **argv_split_inter(const char *src_string, int delimiter,
 		}
 
 		/* zero length argument, skip */
-
 		if (src_string == p) {
 			if (include_empty) {
 				arg[0] = '\0';
@@ -212,7 +208,6 @@ static char **argv_split_inter(const char *src_string, int delimiter,
 		}
 
 		/* tail argument, add straight from the original string */
-
 		else if ('\0' == *p) {
 			if (SLURM_SUCCESS != argv_append(&argc, &argv, src_string))
 				return NULL;
@@ -221,7 +216,6 @@ static char **argv_split_inter(const char *src_string, int delimiter,
 		}
 
 		/* long argument, malloc buffer, copy and add */
-
 		else if (arglen > (SIZE - 1)) {
 			argtemp = (char*) malloc(arglen + 1);
 			if (NULL == argtemp)
@@ -239,7 +233,6 @@ static char **argv_split_inter(const char *src_string, int delimiter,
 		}
 
 		/* short argument, copy to buffer and add */
-
 		else {
 			strncpy(arg, src_string, arglen);
 			arg[arglen] = '\0';
@@ -252,18 +245,17 @@ static char **argv_split_inter(const char *src_string, int delimiter,
 	}
 
 	/* All done */
-
 	return argv;
 }
 
 char **argv_split(const char *src_string, int delimiter)
 {
-    return argv_split_inter(src_string, delimiter, 0);
+	return argv_split_inter(src_string, delimiter, 0);
 }
 
 char **argv_split_with_empty(const char *src_string, int delimiter)
 {
-    return argv_split_inter(src_string, delimiter, 1);
+	return argv_split_inter(src_string, delimiter, 1);
 }
 
 /*
@@ -283,7 +275,6 @@ int argv_count(char **argv)
 	return i;
 }
 
-
 /*
  * Join all the elements of an argv array into a single
  * newly-allocated string.
@@ -297,35 +288,29 @@ char *argv_join(char **argv, int delimiter)
 	size_t i;
 
 	/* Bozo case */
-
 	if (NULL == argv || NULL == argv[0]) {
 		return strdup("");
 	}
 
 	/* Find the total string length in argv including delimiters.  The
      	 last delimiter is replaced by the NULL character. */
-
 	for (p = argv; *p; ++p) {
 		str_len += strlen(*p) + 1;
 	}
 
 	/* Allocate the string. */
-
 	if (NULL == (str = (char*) malloc(str_len)))
 		return NULL;
 
 	/* Loop filling in the string. */
-
 	str[--str_len] = '\0';
 	p = argv;
 	pp = *p;
 
 	for (i = 0; i < str_len; ++i) {
 		if ('\0' == *pp) {
-
-      /* End of a string, fill in a delimiter and go to the next
-         string. */
-
+			/* End of a string, fill in a delimiter
+			 * and go to the next string. */
 			str[i] = (char) delimiter;
 			++p;
 			pp = *p;
@@ -335,10 +320,8 @@ char *argv_join(char **argv, int delimiter)
 	}
 
 	/* All done */
-
 	return str;
 }
-
 
 /*
  * Join all the elements of an argv array from within a
@@ -346,55 +329,47 @@ char *argv_join(char **argv, int delimiter)
  */
 char *argv_join_range(char **argv, size_t start, size_t end, int delimiter)
 {
-    char **p;
-    char *pp;
-    char *str;
-    size_t str_len = 0;
-    size_t i;
+	char **p;
+	char *pp;
+	char *str;
+	size_t str_len = 0;
+	size_t i;
 
-    /* Bozo case */
+	/* Bozo case */
+	if (NULL == argv || NULL == argv[0] || (int)start > argv_count(argv)) {
+		return strdup("");
+	}
 
-    if (NULL == argv || NULL == argv[0] || (int)start > argv_count(argv)) {
-        return strdup("");
-    }
+	/* Find the total string length in argv including delimiters.  The
+	 * last delimiter is replaced by the NULL character. */
+	for (p = &argv[start], i=start; *p && i < end; ++p, ++i) {
+		str_len += strlen(*p) + 1;
+	}
 
-    /* Find the total string length in argv including delimiters.  The
-     last delimiter is replaced by the NULL character. */
+	/* Allocate the string. */
+	if (NULL == (str = (char*) malloc(str_len)))
+		return NULL;
 
-    for (p = &argv[start], i=start; *p && i < end; ++p, ++i) {
-        str_len += strlen(*p) + 1;
-    }
+	/* Loop filling in the string. */
+	str[--str_len] = '\0';
+	p = &argv[start];
+	pp = *p;
 
-    /* Allocate the string. */
+	for (i = 0; i < str_len; ++i) {
+		if ('\0' == *pp) {
+			/* End of a string, fill in a delimiter and go to the next
+			 * string. */
+			str[i] = (char) delimiter;
+			++p;
+			pp = *p;
+		} else {
+			str[i] = *pp++;
+		}
+	}
 
-    if (NULL == (str = (char*) malloc(str_len)))
-        return NULL;
-
-    /* Loop filling in the string. */
-
-    str[--str_len] = '\0';
-    p = &argv[start];
-    pp = *p;
-
-    for (i = 0; i < str_len; ++i) {
-        if ('\0' == *pp) {
-
-            /* End of a string, fill in a delimiter and go to the next
-             string. */
-
-            str[i] = (char) delimiter;
-            ++p;
-            pp = *p;
-        } else {
-            str[i] = *pp++;
-        }
-    }
-
-    /* All done */
-
-    return str;
+	/* All done */
+	return str;
 }
-
 
 /*
  * Return the number of bytes consumed by an argv array.
@@ -416,7 +391,6 @@ size_t argv_len(char **argv)
 	return length;
 }
 
-
 /*
  * Copy a NULL-terminated argv array.
  */
@@ -429,7 +403,7 @@ char **argv_copy(char **argv)
 		return NULL;
 
 	/* create an "empty" list, so that we return something valid if we
-     were passed a valid list with no contained elements */
+	 * were passed a valid list with no contained elements */
 	dupv = (char**) malloc(sizeof(char*));
 	dupv[0] = NULL;
 
@@ -443,152 +417,136 @@ char **argv_copy(char **argv)
 	}
 
 	/* All done */
-
 	return dupv;
 }
 
-
 int argv_delete(int *argc, char ***argv, int start, int num_to_delete)
 {
-    int i;
-    int count;
-    int suffix_count;
-    char **tmp;
+	int i;
+	int count;
+	int suffix_count;
+	char **tmp;
 
-    /* Check for the bozo cases */
-    if (NULL == argv || NULL == *argv || 0 == num_to_delete) {
-        return SLURM_SUCCESS;
-    }
-    count = argv_count(*argv);
-    if (start > count) {
-        return SLURM_SUCCESS;
-    } else if (start < 0 || num_to_delete < 0) {
-        return SLURM_FAILURE;
-    }
+	/* Check for the bozo cases */
+	if (NULL == argv || NULL == *argv || 0 == num_to_delete) {
+		return SLURM_SUCCESS;
+	}
+	count = argv_count(*argv);
+	if (start > count) {
+		return SLURM_SUCCESS;
+	} else if (start < 0 || num_to_delete < 0) {
+		return SLURM_FAILURE;
+	}
 
-    /* Ok, we have some tokens to delete.  Calculate the new length of
-       the argv array. */
-
-    suffix_count = count - (start + num_to_delete);
-    if (suffix_count < 0) {
-        suffix_count = 0;
-    }
+	/* Ok, we have some tokens to delete.  Calculate the new length of
+	 * the argv array. */
+	suffix_count = count - (start + num_to_delete);
+	if (suffix_count < 0) {
+		suffix_count = 0;
+	}
 
     /* Free all items that are being deleted */
+	for (i = start; i < count && i < start + num_to_delete; ++i) {
+		free((*argv)[i]);
+	}
 
-    for (i = start; i < count && i < start + num_to_delete; ++i) {
-        free((*argv)[i]);
-    }
+	/* Copy the suffix over the deleted items */
+	for (i = start; i < start + suffix_count; ++i) {
+		(*argv)[i] = (*argv)[i + num_to_delete];
+	}
 
-    /* Copy the suffix over the deleted items */
+	/* Add the trailing NULL */
+	(*argv)[i] = NULL;
 
-    for (i = start; i < start + suffix_count; ++i) {
-        (*argv)[i] = (*argv)[i + num_to_delete];
-    }
+	/* adjust the argv array */
+	tmp = (char**)realloc(*argv, sizeof(char**) * (i + 1));
+	if (NULL != tmp) *argv = tmp;
 
-    /* Add the trailing NULL */
+	/* adjust the argc */
+	(*argc) -= num_to_delete;
 
-    (*argv)[i] = NULL;
-
-    /* adjust the argv array */
-    tmp = (char**)realloc(*argv, sizeof(char**) * (i + 1));
-    if (NULL != tmp) *argv = tmp;
-
-    /* adjust the argc */
-    (*argc) -= num_to_delete;
-
-    return SLURM_SUCCESS;
+	return SLURM_SUCCESS;
 }
-
 
 int argv_insert(char ***target, int start, char **source)
 {
-    int i, source_count, target_count;
-    int suffix_count;
+	int i, source_count, target_count;
+	int suffix_count;
 
-    /* Check for the bozo cases */
+	/* Check for the bozo cases */
+	if (NULL == target || NULL == *target || start < 0) {
+		return SLURM_FAILURE;
+	} else if (NULL == source) {
+		return SLURM_SUCCESS;
+	}
 
-    if (NULL == target || NULL == *target || start < 0) {
-        return SLURM_FAILURE;
-    } else if (NULL == source) {
-        return SLURM_SUCCESS;
-    }
+	/* Easy case: appending to the end */
+	target_count = argv_count(*target);
+	source_count = argv_count(source);
+	if (start > target_count) {
+		for (i = 0; i < source_count; ++i) {
+			argv_append(&target_count, target, source[i]);
+		}
+	}
 
-    /* Easy case: appending to the end */
+	/* Harder: insertting into the middle */
+	else {
+		/* Alloc out new space */
+		*target = (char**) realloc(*target,
+				sizeof(char *) * (target_count + source_count + 1));
 
-    target_count = argv_count(*target);
-    source_count = argv_count(source);
-    if (start > target_count) {
-        for (i = 0; i < source_count; ++i) {
-            argv_append(&target_count, target, source[i]);
-        }
-    }
+		/* Move suffix items down to the end */
+		suffix_count = target_count - start;
+		for (i = suffix_count - 1; i >= 0; --i) {
+			(*target)[start + source_count + i] =
+					(*target)[start + i];
+		}
+		(*target)[start + suffix_count + source_count] = NULL;
 
-    /* Harder: insertting into the middle */
+		/* Strdup in the source argv */
+		for (i = start; i < start + source_count; ++i) {
+			(*target)[i] = strdup(source[i - start]);
+		}
+	}
 
-    else {
-
-        /* Alloc out new space */
-
-        *target = (char**) realloc(*target,
-                                   sizeof(char *) * (target_count + source_count + 1));
-
-        /* Move suffix items down to the end */
-
-        suffix_count = target_count - start;
-        for (i = suffix_count - 1; i >= 0; --i) {
-            (*target)[start + source_count + i] =
-                (*target)[start + i];
-        }
-        (*target)[start + suffix_count + source_count] = NULL;
-
-        /* Strdup in the source argv */
-
-        for (i = start; i < start + source_count; ++i) {
-            (*target)[i] = strdup(source[i - start]);
-        }
-    }
-
-    /* All done */
-
-    return SLURM_SUCCESS;
+	/* All done */
+	return SLURM_SUCCESS;
 }
 
 int argv_insert_element(char ***target, int location, char *source)
 {
-    int i, target_count;
-    int suffix_count;
+	int i, target_count;
+	int suffix_count;
 
-    /* Check for the bozo cases */
+	/* Check for the bozo cases */
+	if (NULL == target || NULL == *target || location < 0) {
+		return SLURM_FAILURE;
+	} else if (NULL == source) {
+		return SLURM_SUCCESS;
+	}
 
-    if (NULL == target || NULL == *target || location < 0) {
-        return SLURM_FAILURE;
-    } else if (NULL == source) {
-        return SLURM_SUCCESS;
-    }
+	/* Easy case: appending to the end */
+	target_count = argv_count(*target);
+	if (location > target_count) {
+		argv_append(&target_count, target, source);
+		return SLURM_SUCCESS;
+	}
 
-    /* Easy case: appending to the end */
-    target_count = argv_count(*target);
-    if (location > target_count) {
-        argv_append(&target_count, target, source);
-        return SLURM_SUCCESS;
-    }
+	/* Alloc out new space */
+	*target = (char**) realloc(*target,
+			sizeof(char*) * (target_count + 2));
 
-    /* Alloc out new space */
-    *target = (char**) realloc(*target,
-                               sizeof(char*) * (target_count + 2));
+	/* Move suffix items down to the end */
+	suffix_count = target_count - location;
+	for (i = suffix_count - 1; i >= 0; --i) {
+		(*target)[location + 1 + i] =
+				(*target)[location + i];
+	}
+	(*target)[location + suffix_count + 1] = NULL;
 
-    /* Move suffix items down to the end */
-    suffix_count = target_count - location;
-    for (i = suffix_count - 1; i >= 0; --i) {
-        (*target)[location + 1 + i] =
-        (*target)[location + i];
-    }
-    (*target)[location + suffix_count + 1] = NULL;
+	/* Strdup in the source */
+	(*target)[location] = strdup(source);
 
-    /* Strdup in the source */
-    (*target)[location] = strdup(source);
-
-    /* All done */
-    return SLURM_SUCCESS;
+	/* All done */
+	return SLURM_SUCCESS;
 }

@@ -171,7 +171,6 @@ static void *_msg_thread(void *no_data)
 	for (i=0; (!thread_shutdown); i++) {
 		if (i > 0)
 			sleep(60);
-                fprintf(stderr, "Attempting to open dynalloc port %d\n", sched_port);
 		sock_fd = slurm_init_msg_engine_port(sched_port);
 		if (sock_fd != SLURM_SOCKET_ERROR)
 			break;
@@ -196,8 +195,6 @@ static void *_msg_thread(void *no_data)
 
 		err_code = 0;
 		err_msg = "";
-
-		fprintf(stderr, "===============================\n");
 		msg = _recv_msg(new_fd);
 		if (msg) {
 			_proc_msg(new_fd, msg);

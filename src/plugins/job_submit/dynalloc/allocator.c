@@ -82,15 +82,15 @@ static void _parse_job_params(const char *cmd, char *orte_jobid,
 	while(p_str){
 		if(strstr(p_str, "jobid")){
 			pos = strchr(p_str, '=');
-						pos++;  /* step over the = */
+			pos++;  /* step over the = */
 			strcpy(orte_jobid, pos);
 		}else if(strstr(p_str, "return")){
 			pos = strchr(p_str, '=');
-						pos++;  /* step over the = */
+			pos++;  /* step over the = */
 			strcpy(return_flag, pos);
 		}else if(strstr(p_str, "timeout")){
 			pos = strchr(p_str, '=');
-						pos++;  /* step over the = */
+			pos++;  /* step over the = */
 			*job_timeout = atol(pos);
 		}
 		p_str = strtok(NULL, " ");
@@ -126,23 +126,23 @@ static void _parse_app_params(const char *cmd, char *appid,
 	while(p_str){
 		if(strstr(p_str, "app")){
 			pos = strchr(p_str, '=');
-						pos++;  /* step over the = */
+			pos++;  /* step over the = */
 			strcpy(appid, pos);
 		}else if(strstr(p_str, "np")){
 			pos = strchr(p_str, '=');
-						pos++;  /* step over the = */
+			pos++;  /* step over the = */
 			*np = atoi(pos);
 		}else if(strstr(p_str, "N=")){
 			pos =  strchr(p_str, '=');
-                        pos++;  /* step over the = */
+			pos++;  /* step over the = */
 			*request_node_num = atoi(pos);
 		}else  if(strstr(p_str, "node_list")){
 			pos = strchr(p_str, '=');
-                        pos++;  /* step over the = */
+			pos++;  /* step over the = */
             strcpy(node_range_list, pos);
 		}else  if(strstr(p_str, "flag")){
 			pos = strchr(p_str, '=');
-                        pos++;  /* step over the = */
+			pos++;  /* step over the = */
             strcpy(flag, pos);
 		}
 		p_str = strtok(NULL, " ");
@@ -185,8 +185,8 @@ static int _allocate_app_op(const char *msg_app,
 
 	if(SLURM_SUCCESS == rc){
 		sprintf(app_resp_msg,
-			"app=%s slurm_jobid=%u allocated_node_list=%s tasks_per_node=%s",
-			 appid, slurm_jobid, resp_node_list, tasks_per_node);
+				"app=%s slurm_jobid=%u allocated_node_list=%s tasks_per_node=%s",
+				appid, slurm_jobid, resp_node_list, tasks_per_node);
 	} else{
 		sprintf(app_resp_msg, "app=%s allocate_failure", appid);
 	}

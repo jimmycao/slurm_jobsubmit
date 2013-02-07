@@ -76,7 +76,7 @@
  *		0  successful, final_req_node_list is returned
  */
 extern int allocate_node_rpc(uint32_t np, uint32_t request_node_num,
-				const char *node_range_list, const char *flag,
+				char *node_range_list, const char *flag,
 				time_t timeout, uint32_t *slurm_jobid,
 				char *reponse_node_list, char *tasks_per_node);
 
@@ -106,7 +106,7 @@ extern int allocate_node_rpc(uint32_t np, uint32_t request_node_num,
  *		0  successful, final_req_node_list is returned
  */
 extern int allocate_node(uint32_t np, uint32_t request_node_num,
-				const char *node_range_list, const char *flag,
+				char *node_range_list, const char *flag,
 				time_t timeout, uint32_t *slurm_jobid,
 				char *reponse_node_list, char *tasks_per_node);
 
